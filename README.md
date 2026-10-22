@@ -8,7 +8,8 @@
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES_Modules-f7df1e?logo=javascript&logoColor=black)
 ![WebGL2](https://img.shields.io/badge/WebGL2-GLSL-990000?logo=webgl&logoColor=white)
-![WebRTC](https://img.shields.io/badge/WebRTC-PeerJS-333333?logo=webrtc&logoColor=white)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflare&logoColor=white)
+![WebSocket](https://img.shields.io/badge/WebSocket-online-333333)
 ![Sin dependencias](https://img.shields.io/badge/dependencias-0-brightgreen)
 ![Licencia MIT](https://img.shields.io/badge/licencia-MIT-blue)
 
@@ -19,7 +20,7 @@
 ## ✨ Características
 
 - 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo** y **plátanos**, marcador de posición, minimapa y clasificación final.
-- 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA.
+- 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
 - 🎨 **Motor gráfico propio con WebGL2**, sin Three.js ni otros motores:
   - Sombras en tiempo real (*shadow mapping* con filtrado PCF)
   - Reflejos del cielo con efecto Fresnel en la pintura, los cristales y el cromo
@@ -89,8 +90,10 @@ flowchart LR
     end
 
     subgraph net [net/ · multijugador]
-        network[network.js<br/>PeerJS / WebRTC]
+        network[network.js<br/>WebSocket]
     end
+
+    network <-- wss --> relay[(server/<br/>Cloudflare Worker<br/>salas de juego)]
 ```
 
 ```
@@ -104,6 +107,7 @@ flowchart LR
 │   ├── render/           Motor WebGL2: shaders, modelos, escenario y cámara
 │   ├── ui/               Marcador (canvas 2D) y menú (HTML)
 │   └── net/              Multijugador online
+├── server/               Servidor de reenvío (Cloudflare Workers + Durable Objects)
 ├── tools/dev-server.js   Servidor local sin dependencias
 └── docs/                 Capturas y documentación técnica
 ```
@@ -129,8 +133,8 @@ Abre **http://localhost:8080**. Los módulos ES necesitan servirse por `http`, p
 | **Lenguaje** | JavaScript (ES2022, módulos ES), HTML, CSS |
 | **Gráficos 3D** | WebGL2 y GLSL ES 3.0 |
 | **Interfaz** | Canvas 2D para el marcador, HTML/CSS para los menús |
-| **Red** | WebRTC mediante [PeerJS](https://peerjs.com/) |
-| **Publicación** | GitHub Pages |
+| **Red** | WebSocket seguro con un servidor propio en Cloudflare Workers + Durable Objects |
+| **Publicación** | GitHub Pages (juego) y Cloudflare (servidor) |
 
 ## 📄 Licencia
 

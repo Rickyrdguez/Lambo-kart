@@ -51,28 +51,35 @@ flowchart LR
    - Niebla exponencial hacia el color del horizonte.
    - Todo el cálculo se hace en espacio lineal, y al final se aplican *tone mapping* **ACES** y corrección gamma.
 
-## Multijugador ([`net/network.js`](../src/net/network.js))
+## Multijugador ([`net/network.js`](../src/net/network.js) y [`server/`](../server/src/index.js))
 
-Las conexiones son **WebRTC** entre navegadores, usando PeerJS. El servidor público de PeerJS solo sirve para la señalización: que los navegadores se encuentren a partir del código de la sala. Si la conexión directa no es posible, PeerJS usa servidores TURN.
+### Por qué un servidor de reenvío
 
-### Topología en estrella
+La primera versión conectaba los navegadores directamente con WebRTC (PeerJS). En redes con más restricciones, como eduroam o los datos móviles, la conexión directa suele estar bloqueada, y los servidores TURN públicos que usa PeerJS como respaldo ya no responden. Por eso ahora todo pasa por un servidor propio:
+
+- **Cloudflare Workers + Durable Objects**, en el plan gratuito.
+- Conexión por **WebSocket seguro (`wss`) en el puerto 443**, el mismo que cualquier web `https`. Si en una red se puede navegar, se puede jugar.
+- Cada partida es una **sala** (un Durable Object) identificada por su código de 5 letras. Todos los jugadores de la sala se conectan al mismo objeto.
+- Se usa la API de **hibernación** de WebSockets: mientras nadie envía mensajes, la sala no consume recursos.
+- Solo se aceptan conexiones desde la web del juego y desde `localhost` (comprobando la cabecera `Origin`).
 
 ```mermaid
 flowchart TD
-    H((Anfitrión))
-    H <--> A[Invitado 1]
-    H <--> B[Invitado 2]
-    H <--> C[Invitado 3]
+    S[(Sala ABCDE<br/>Durable Object)]
+    H((Anfitrión)) <--> S
+    A[Invitado 1] <--> S
+    B[Invitado 2] <--> S
+    C[Invitado 3] <--> S
 ```
 
-El anfitrión acepta las conexiones, asigna un hueco (0–3) a cada jugador y **reenvía** los mensajes de cada invitado al resto.
+El servidor **no conoce las reglas del juego**: asigna huecos (0 = anfitrión, 1–3 = invitados), mantiene la lista de la sala de espera y reenvía cada mensaje a los demás jugadores. Si el anfitrión se va, la sala se cierra.
 
 ### Quién simula qué
 
 | Lo simula | Qué | Se envía |
 |---|---|---|
-| Cada jugador | Su propio coche | `car` ~30 veces/s |
-| Anfitrión | IA, cajas, plátanos y orden de llegada | `world` ~20 veces/s |
+| Cada jugador | Su propio coche | `car` ~20 veces/s |
+| Anfitrión | IA, cajas, plátanos y orden de llegada | `world` ~15 veces/s |
 
 Como cada jugador simula su coche en su propio ordenador, conducir **no tiene retraso**. Los coches de los demás se dibujan con:
 
@@ -81,16 +88,27 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 
 ### Mensajes
 
-| Mensaje | Dirección | Contenido |
+| Mensaje | Origen → destino | Contenido |
 |---|---|---|
-| `hello` | invitado → anfitrión | Nombre del jugador |
-| `welcome` | anfitrión → invitado | Hueco asignado |
-| `lobby` | anfitrión → todos | Jugadores en la sala |
+| `welcome` | servidor → jugador | Hueco asignado |
+| `lobby` | servidor → todos | Jugadores en la sala |
+| `taken` / `noroom` / `full` | servidor → jugador | Código en uso / no existe la sala / sala llena |
+| `closed` | servidor → invitados | El anfitrión se ha ido |
+| `hello` | jugador → servidor | Nombre del jugador |
 | `start` | anfitrión → todos | Empieza la carrera |
 | `car` | cada jugador → todos | Posición, velocidad, vuelta y objeto de su coche |
 | `world` | anfitrión → todos | Estado, IA, cajas, plátanos y llegada |
 | `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / has pisado un plátano |
 | `banana` | invitado → anfitrión | He tirado un plátano |
-| `full` | anfitrión → invitado | La sala está llena |
 
 Si un jugador se desconecta a mitad de carrera, la IA pasa a conducir su coche.
+
+### Publicar el servidor
+
+```bash
+cd server
+npx wrangler login    # una sola vez
+npx wrangler deploy
+```
+
+La dirección del servidor se configura en `RELAY_URL`, dentro de [`src/config.js`](../src/config.js).

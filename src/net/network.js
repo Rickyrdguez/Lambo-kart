@@ -1,156 +1,94 @@
-// Multijugador online con PeerJS (WebRTC).
+// Multijugador online.
 //
-// El anfitrión hace de "servidor": los invitados se conectan directamente a su navegador
-// y él reenvía los mensajes a los demás. El servidor gratuito de PeerJS solo sirve para
-// que los navegadores se encuentren a partir del código de la partida.
+// Todos los jugadores se conectan por WebSocket seguro (wss, puerto 443) a un servidor de
+// reenvío en Cloudflare (carpeta server/). Cada partida es una sala con un código de 5 letras;
+// el servidor reenvía los mensajes de cada jugador a los demás. Como usa el mismo puerto que
+// cualquier web https, funciona también en redes restrictivas (universidad, datos móviles…).
 //
 // Reparto del trabajo:
-//  - Cada jugador simula SU coche (sin retraso al conducir) y lo envía ~30 veces/s.
-//  - El anfitrión simula la IA, las cajas, los plátanos y la llegada, y envía el mundo ~20 veces/s.
+//  - Cada jugador simula SU coche (sin retraso al conducir) y lo envía ~20 veces/s.
+//  - El anfitrión simula la IA, las cajas, los plátanos y la llegada, y envía el mundo ~15 veces/s.
 //
-// Mensajes: hello, welcome, full, lobby, start, car, world, item, spin, banana.
-import { PEER_PREFIX, MAX_PLAYERS, CAR_SEND_MS, WORLD_SEND_MS } from '../config.js';
+// Mensajes del servidor: welcome, lobby, taken, noroom, full, closed.
+// Mensajes entre jugadores: hello, start, car, world, item, spin, banana.
+import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS } from '../config.js';
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
 import { me, owned } from '../game/cars.js';
 import { hitBanana } from '../game/items.js';
 import { startRace, showMenuScene } from '../game/session.js';
-import { showLobby, renderLobby, showScreen, setStatus, playerName, cleanName } from '../ui/menu.js';
+import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin letras que se confunden (O/0, I/1)
 const CONNECT_TIMEOUT = 15000;
+const HOST_ID = 0; // el servidor da el hueco 0 a quien crea la partida
 
 export const net = {
-  peer: null, conns: [], hostConn: null, online: false,
-  myId: 0, hostId: 0, code: '', lobby: [], inRace: false, lastCar: 0, lastWorld: 0
+  ws: null, online: false, myId: 0, hostId: HOST_ID,
+  code: '', lobby: [], inRace: false, lastCar: 0, lastWorld: 0
 };
 export const isHost = () => net.myId === net.hostId;
 
 const randomCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.random() * CODE_CHARS.length | 0]).join('');
 
-// El anfitrión lo manda a todos; un invitado se lo manda al anfitrión, que lo reenvía
 export function send(msg) {
-  if (!net.online) return;
-  if (isHost()) relay(msg, null);
-  else if (net.hostConn && net.hostConn.open) net.hostConn.send(msg);
+  if (net.ws && net.ws.readyState === WebSocket.OPEN) net.ws.send(JSON.stringify(msg));
 }
 
-function relay(msg, except) {
-  net.conns.forEach(c => { if (c !== except && c.open) c.send(msg); });
-}
-
-// ================== Anfitrión ==================
+// ================== Conexión ==================
 export function createGame() {
-  setStatus('Creando partida...');
-  net.code = randomCode();
-  const peer = new window.Peer(PEER_PREFIX + net.code);
-  net.peer = peer;
-  peer.on('open', () => {
-    Object.assign(net, { online: true, myId: 0, hostId: 0, lobby: [{ id: 0, name: playerName() }] });
+  connect(randomCode(), true);
+}
+
+export function joinGame(rawCode) {
+  const code = rawCode.trim().toUpperCase();
+  if (!/^[A-Z2-9]{5}$/.test(code)) return setStatus('Escribe el código de 5 letras', true);
+  connect(code, false);
+}
+
+function connect(code, create) {
+  setStatus(create ? 'Creando partida...' : 'Conectando...');
+  const ws = new WebSocket(`${RELAY_URL}/room/${code}${create ? '?create=1' : ''}`);
+  Object.assign(net, { ws, code, myId: -1, online: false }); // myId llega con "welcome"
+  const timer = setTimeout(() => { if (net.ws === ws && !net.online) leaveGame(ERRORS.timeout); }, CONNECT_TIMEOUT);
+  ws.onmessage = e => onServerMessage(JSON.parse(e.data), create);
+  ws.onclose = () => {
+    clearTimeout(timer);
+    if (net.ws === ws) leaveGame(net.online ? 'Se ha perdido la conexión con la partida' : ERRORS.network);
+  };
+}
+
+function onServerMessage(m, create) {
+  if (m.t === 'taken') { net.ws = null; createGame(); return; } // código en uso: probamos otro
+  if (m.t === 'welcome') {
+    Object.assign(net, { myId: m.id, online: true, lobby: [] });
+    send({ t: 'hello', name: playerName() });
     setStatus('');
     showLobby();
-  });
-  peer.on('connection', hostAccept);
-  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
-  peer.on('error', e => {
-    if (e.type === 'unavailable-id') { peer.destroy(); createGame(); } // código ya usado: otro
-    else netError(e);
-  });
-}
-
-function freeSlot() {
-  for (let i = 1; i < MAX_PLAYERS; i++) if (!net.conns.some(c => c.slot === i)) return i;
-  return -1;
-}
-
-function hostAccept(conn) {
-  conn.on('open', () => {
-    const id = freeSlot();
-    if (id < 0) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 500); return; }
-    conn.slot = id;
-    net.conns.push(conn);
-    conn.send({ t: 'welcome', id });
-  });
-  conn.on('data', m => hostReceive(conn, m));
-  conn.on('close', () => hostDrop(conn));
-}
-
-function hostReceive(conn, m) {
-  if (m.t === 'hello') {
-    const player = { id: conn.slot, name: cleanName(m.name) || 'Jugador' };
-    net.lobby = net.lobby.filter(p => p.id !== conn.slot).concat(player);
-    sendLobby();
     return;
   }
-  relay(m, conn);
+  if (ERRORS[m.t]) return leaveGame(ERRORS[m.t]);
   if (handlers[m.t]) handlers[m.t](m);
 }
 
-function hostDrop(conn) {
-  if (!net.conns.includes(conn)) return;
-  net.conns = net.conns.filter(c => c !== conn);
-  net.lobby = net.lobby.filter(p => p.id !== conn.slot);
-  sendLobby();
-}
-
-function sendLobby() {
-  const msg = { t: 'lobby', players: net.lobby };
-  relay(msg, null);
-  handlers.lobby(msg);
-}
-
-// ================== Invitado ==================
-export function joinGame(rawCode) {
-  const code = rawCode.trim().toUpperCase();
-  if (code.length < 5) return setStatus('Escribe el código de 5 letras', true);
-  setStatus('Conectando...');
-  const peer = new window.Peer();
-  Object.assign(net, { peer, myId: -1, hostId: 0, code }); // myId llega con "welcome"
-  peer.on('open', () => connectToHost(peer, code));
-  peer.on('error', netError);
-}
-
-function connectToHost(peer, code) {
-  const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
-  net.hostConn = conn;
-  const timer = setTimeout(() => { if (!conn.open) netError({ type: 'timeout' }); }, CONNECT_TIMEOUT);
-  conn.on('open', () => {
-    clearTimeout(timer);
-    net.online = true;
-    conn.send({ t: 'hello', name: playerName() });
-    setStatus('');
-    showLobby();
-  });
-  conn.on('data', m => { if (handlers[m.t]) handlers[m.t](m); });
-  conn.on('close', () => { if (net.peer === peer) leaveGame('El anfitrión ha cerrado la partida'); });
-}
-
-// ================== Común ==================
 const ERRORS = {
-  'peer-unavailable': 'No existe ninguna partida con ese código',
-  'network': 'No hay conexión con el servidor de PeerJS. ¿Tienes internet?',
-  'socket-error': 'No hay conexión con el servidor de PeerJS. ¿Tienes internet?',
-  'server-error': 'El servidor de PeerJS no responde. Prueba en un rato.',
-  'browser-incompatible': 'Tu navegador no permite jugar online. Usa Chrome, Edge o Firefox.',
-  'timeout': 'No se pudo conectar con el anfitrión. Si estáis en la red del instituto, probad con el hotspot del móvil.'
+  noroom: 'No existe ninguna partida con ese código',
+  full: 'La partida está llena (máximo 4 jugadores)',
+  closed: 'El anfitrión ha cerrado la partida',
+  network: 'No se pudo conectar con el servidor del juego. ¿Tienes internet?',
+  timeout: 'El servidor del juego no responde. Prueba otra vez en un momento.'
 };
 
-function netError(e) {
-  leaveGame(ERRORS[e.type] || 'Error de conexión: ' + e.type);
-}
-
 export function leaveGame(msg = '') {
-  const peer = net.peer;
-  Object.assign(net, { peer: null, conns: [], hostConn: null, online: false, myId: 0, hostId: 0, code: '', lobby: [], inRace: false });
-  if (peer) peer.destroy();
+  const ws = net.ws;
+  Object.assign(net, { ws: null, online: false, myId: 0, hostId: HOST_ID, code: '', lobby: [], inRace: false });
+  if (ws) ws.close();
   showMenuScene();
   showScreen('scr-main');
   setStatus(msg, !!msg);
 }
 
 const handlers = {
-  welcome: m => { net.myId = m.id; renderLobby(); },
-  full: () => leaveGame('La partida está llena (máximo 4 jugadores)'),
   lobby: m => { net.lobby = m.players; dropMissingPlayers(); renderLobby(); },
   start: m => startRace(m.humans),
   car: m => { if (net.inRace) applyRemote(game.cars[m.id], m.s); },

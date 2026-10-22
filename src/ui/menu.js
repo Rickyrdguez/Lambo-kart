@@ -59,12 +59,6 @@ async function copyText(text, btn) {
   setTimeout(() => { btn.textContent = old; }, 1500);
 }
 
-function needPeer() {
-  if (window.Peer) return true;
-  setStatus('Para jugar online hace falta internet (no se pudo cargar PeerJS).', true);
-  return false;
-}
-
 function saveName() {
   try { localStorage.setItem('lamboName', playerName()); } catch {}
 }
@@ -73,9 +67,9 @@ export function initMenu() {
   try { $('name').value = localStorage.getItem('lamboName') || ''; } catch {}
   $('name').addEventListener('change', saveName);
   $('btn-solo').onclick = () => { saveName(); hostStart(); };
-  $('btn-create').onclick = () => { saveName(); if (needPeer()) createGame(); };
+  $('btn-create').onclick = () => { saveName(); createGame(); };
   $('btn-join').onclick = () => { setStatus(''); showScreen('scr-join'); $('code').focus(); };
-  $('btn-join-go').onclick = () => { saveName(); if (needPeer()) joinGame($('code').value); };
+  $('btn-join-go').onclick = () => { saveName(); joinGame($('code').value); };
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join-go').click(); });
   $('btn-start').onclick = () => hostStart();
   $('btn-copy-link').onclick = e => copyText(shareLink(), e.target);

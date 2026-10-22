@@ -25,6 +25,7 @@ export const SHADOW_SIZE = 2048;               // resolución del mapa de sombra
 export const SHADOW_RANGE = 900;               // zona con sombras alrededor del jugador
 
 // ---- Red ----
-export const PEER_PREFIX = 'lambokart-v1-'; // cambia la versión si el protocolo deja de ser compatible
-export const CAR_SEND_MS = 33;              // cada cuánto envío mi coche (~30 veces/s)
-export const WORLD_SEND_MS = 50;            // cada cuánto envía el anfitrión el mundo (~20 veces/s)
+// Servidor de reenvío (carpeta server/, publicado en Cloudflare Workers)
+export const RELAY_URL = 'wss://lambokart.rickyrdguez.workers.dev';
+export const CAR_SEND_MS = 50;   // cada cuánto envío mi coche (~20 veces/s)
+export const WORLD_SEND_MS = 66; // cada cuánto envía el anfitrión el mundo (~15 veces/s)
