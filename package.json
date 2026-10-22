@@ -1,0 +1,12 @@
+{
+  "name": "lambo-kart",
+  "version": "1.0.0",
+  "description": "Juego de carreras 3D en el navegador con WebGL2 y multijugador online con PeerJS.",
+  "private": true,
+  "scripts": {
+    "start": "node tools/dev-server.js"
+  },
+  "keywords": ["game", "webgl2", "webrtc", "peerjs", "racing", "javascript"],
+  "author": "Rickyrdguez",
+  "license": "MIT"
+}

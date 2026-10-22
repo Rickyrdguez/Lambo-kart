@@ -1,0 +1,39 @@
+/* Lambo Kart - estilos del menu */
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
+canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+#hud { pointer-events: none; }
+
+/* ---- Menú ---- */
+#ui { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; padding: 16px; box-sizing: border-box; color: #fff;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,.35), rgba(0,0,0,.8)); }
+.hidden { display: none !important; }
+h1 { font-family: 'Russo One', sans-serif; font-size: clamp(42px, 9vw, 88px); margin: 0; color: #ffb400;
+     letter-spacing: 2px; text-shadow: 0 4px 0 #8a5a00, 0 10px 30px rgba(0,0,0,.6); }
+h2 { font-family: 'Russo One', sans-serif; margin: 0 0 4px; font-weight: 400; }
+.card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 24px; box-sizing: border-box;
+        background: rgba(20,22,28,.82); border: 1px solid rgba(255,255,255,.12); border-radius: 16px;
+        backdrop-filter: blur(8px); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+label { font-size: 13px; color: #bbb; display: flex; flex-direction: column; gap: 6px; }
+input { font: 600 18px 'Inter', sans-serif; padding: 12px 14px; border-radius: 10px; border: 1px solid #444;
+        background: #0e0f13; color: #fff; outline: none; }
+input:focus { border-color: #ffb400; }
+#code { text-transform: uppercase; letter-spacing: 6px; text-align: center; font-size: 26px; }
+button { font: 800 17px 'Inter', sans-serif; padding: 14px; border-radius: 10px; border: 0; cursor: pointer;
+         background: #2b2e38; color: #fff; transition: transform .08s, background .15s; }
+button:hover { background: #3a3e4b; }
+button:active { transform: scale(.98); }
+button.primary { background: #ffb400; color: #1a1200; }
+button.primary:hover { background: #ffc633; }
+button.ghost { background: transparent; color: #aaa; font-weight: 600; padding: 8px; }
+.code-big { font-family: 'Russo One', sans-serif; font-size: 48px; letter-spacing: 10px; text-align: center; color: #ffb400; }
+#share { display: flex; flex-direction: column; gap: 8px; }
+#link { font-size: 13px; font-weight: 400; padding: 9px 12px; }
+.row { display: flex; gap: 8px; }
+.row button { flex: 1; padding: 10px 14px; font-size: 14px; }
+.hint { font-size: 13px; color: #aaa; margin: 0; text-align: center; }
+#players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+#players li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,.06); border-radius: 8px; font-weight: 600; }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+#status { min-height: 20px; margin: 0; font-weight: 600; text-align: center; color: #ddd; }
+#status.error { color: #ff8a80; }
