@@ -27,7 +27,7 @@
   - *Ciudad Neón*: de noche, trazado en 8 con un **puente** que cruza por encima de la propia pista, **túnel**, **callejón** con conos, rascacielos con ventanas encendidas, neones, farolas, faros, luna y estrellas.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
 - 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
-- 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
+- 🌍 **Multijugador online de 2 a 7 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación, y el anfitrión elige cuántos caben, como en Among Us. Si sois menos de 4, karts con IA completan la parrilla. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
 - 🎨 **Motor gráfico propio con WebGL2**, sin Three.js ni otros motores:
   - Sombras en tiempo real (*shadow mapping* con filtrado PCF)
   - Reflejos del cielo con efecto Fresnel en la pintura, los cristales y el cromo
@@ -84,7 +84,7 @@ En el **móvil** (en horizontal): ◀ ▶ abajo a la izquierda para girar (se pu
 1. Abre el juego y pulsa **Iniciar partida**.
 2. Comparte el **código** o pulsa **Copiar enlace** y envíalo.
 3. Tus amigos abren el enlace (o pulsan **Unirse a partida** y escriben el código).
-4. Elige el circuito (o *Aleatorio*) y, cuando estéis todos en la sala, pulsa **Empezar carrera**.
+4. Elige el circuito (o *Aleatorio*) y el número máximo de jugadores (de 2 a 7) y, cuando estéis todos en la sala, pulsa **Empezar carrera**.
 
 ## 🏗️ Arquitectura
 

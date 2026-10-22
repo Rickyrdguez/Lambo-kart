@@ -3,7 +3,7 @@ import { PLAYER_COLORS } from '../config.js';
 import { MAPS, RANDOM_MAP } from '../game/maps.js';
 import { splinePoints, computeBounds } from '../game/track.js';
 import { hostStart, session } from '../game/session.js';
-import { net, isHost, createGame, joinGame, leaveGame, shareMapChoice } from '../net/network.js';
+import { net, isHost, createGame, joinGame, leaveGame, shareMapChoice, setRoomSize } from '../net/network.js';
 import { goFullscreen } from './touch.js';
 
 const $ = id => document.getElementById(id);
@@ -116,7 +116,10 @@ export function renderLobby() {
     li.append(dot, p.name + (p.id === net.hostId ? ' (anfitrión)' : '') + (p.id === net.myId ? ' — tú' : ''));
     list.append(li);
   });
-  $('player-count').textContent = `(${net.lobby.length}/4)`;
+  $('player-count').textContent = `(${net.lobby.length}/${net.size})`;
+  // el anfitrión elige cuántos caben en la sala (como en Among Us)
+  $('size-row').classList.toggle('hidden', !isHost());
+  $('room-size').textContent = net.size;
   renderLobbyMap();
 }
 
@@ -157,6 +160,8 @@ export function initMenu() {
   $('btn-join-go').onclick = () => { saveName(); goFullscreen(); joinGame($('code').value); };
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join-go').click(); });
   $('btn-start').onclick = () => hostStart();
+  $('btn-size-down').onclick = () => setRoomSize(Math.max(net.size - 1, net.lobby.length));
+  $('btn-size-up').onclick = () => setRoomSize(net.size + 1);
   $('btn-copy-link').onclick = e => copyText(shareLink(), e.target);
   $('btn-copy-code').onclick = e => copyText(net.code, e.target);
   document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => leaveGame(); });

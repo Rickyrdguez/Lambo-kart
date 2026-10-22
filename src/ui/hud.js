@@ -140,9 +140,11 @@ function drawOverlay() {
 function drawResults(cy) {
   ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 0, hudCanvas.width, hudCanvas.height);
   const order = ranking(), pos = order.indexOf(me()) + 1;
-  bigText(pos === 1 ? '¡HAS GANADO!' : `Has quedado ${ordinal(pos)}`, cy - 120, 64, me().color);
-  order.forEach((c, i) => bigText(`${ordinal(i + 1)}  ${c.name}`, cy - 40 + i * 36, 26, c.color));
-  if (IS_TOUCH) { if (!isHost()) bigText('Esperando al anfitrión...', cy + 130, 22, '#4caf50'); return; } // hay botones
+  const gap = order.length > 4 ? 27 : 36, size = order.length > 4 ? 22 : 26; // con 7 coches, filas más juntas
+  const top = cy - 50, bottom = top + order.length * gap + 14;
+  bigText(pos === 1 ? '¡HAS GANADO!' : `Has quedado ${ordinal(pos)}`, top - 70, 64, me().color);
+  order.forEach((c, i) => bigText(`${ordinal(i + 1)}  ${c.name}`, top + i * gap, size, c.color));
+  if (IS_TOUCH) { if (!isHost()) bigText('Esperando al anfitrión...', bottom, 22, '#4caf50'); return; } // hay botones
   const hint = isHost() ? 'ENTER: otra carrera  ·  ESC: salir al menú' : 'Esperando al anfitrión...  ·  ESC: salir';
-  bigText(hint, cy + 130, 26, '#4caf50');
+  bigText(hint, bottom, 26, '#4caf50');
 }

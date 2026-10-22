@@ -11,10 +11,10 @@
 //
 // Mensajes del servidor: welcome, lobby, taken, noroom, full, closed.
 // Mensajes entre jugadores: hello, map, start, car, world, item, spin, banana.
-import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS } from '../config.js';
+import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS, DEFAULT_ROOM, MIN_PLAYERS, MAX_PLAYERS } from '../config.js';
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
-import { me, owned } from '../game/cars.js';
+import { me, owned, carById } from '../game/cars.js';
 import { hitBanana } from '../game/items.js';
 import { startRace, showMenuScene, session } from '../game/session.js';
 import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
@@ -24,7 +24,7 @@ const CONNECT_TIMEOUT = 15000;
 const HOST_ID = 0; // el servidor da el hueco 0 a quien crea la partida
 
 export const net = {
-  ws: null, online: false, myId: 0, hostId: HOST_ID,
+  ws: null, online: false, myId: 0, hostId: HOST_ID, size: DEFAULT_ROOM, // size: tamaño de la sala
   code: '', lobby: [], inRace: false, lastCar: 0, lastWorld: 0
 };
 export const isHost = () => net.myId === net.hostId;
@@ -48,7 +48,7 @@ export function joinGame(rawCode) {
 
 function connect(code, create) {
   setStatus(create ? 'Creando partida...' : 'Conectando...');
-  const ws = new WebSocket(`${RELAY_URL}/room/${code}${create ? '?create=1' : ''}`);
+  const ws = new WebSocket(`${RELAY_URL}/room/${code}${create ? `?create=1&size=${net.size}` : ''}`);
   Object.assign(net, { ws, code, myId: -1, online: false }); // myId llega con "welcome"
   const timer = setTimeout(() => { if (net.ws === ws && !net.online) leaveGame(ERRORS.timeout); }, CONNECT_TIMEOUT);
   ws.onmessage = e => onServerMessage(JSON.parse(e.data), create);
@@ -73,7 +73,7 @@ function onServerMessage(m, create) {
 
 const ERRORS = {
   noroom: 'No existe ninguna partida con ese código',
-  full: 'La partida está llena (máximo 4 jugadores)',
+  full: 'La partida está llena',
   closed: 'El anfitrión ha cerrado la partida',
   network: 'No se pudo conectar con el servidor del juego. ¿Tienes internet?',
   timeout: 'El servidor del juego no responde. Prueba otra vez en un momento.'
@@ -81,11 +81,18 @@ const ERRORS = {
 
 export function leaveGame(msg = '') {
   const ws = net.ws;
-  Object.assign(net, { ws: null, online: false, myId: 0, hostId: HOST_ID, code: '', lobby: [], inRace: false });
+  Object.assign(net, { ws: null, online: false, myId: 0, hostId: HOST_ID, size: DEFAULT_ROOM, code: '', lobby: [], inRace: false });
   if (ws) ws.close();
   showMenuScene();
   showScreen('scr-main');
   setStatus(msg, !!msg);
+}
+
+// El anfitrión cambia cuántos jugadores caben en la sala (el servidor no deja bajar de los que ya hay)
+export function setRoomSize(n) {
+  if (!isHost()) return;
+  net.size = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, n));
+  send({ t: 'size', size: net.size });
 }
 
 // El anfitrión avisa del circuito elegido (también cuando entra alguien nuevo a la sala)
@@ -94,10 +101,14 @@ export function shareMapChoice() {
 }
 
 const handlers = {
-  lobby: m => { net.lobby = m.players; dropMissingPlayers(); renderLobby(); shareMapChoice(); },
+  lobby: m => {
+    net.lobby = m.players;
+    if (m.size) net.size = m.size;
+    dropMissingPlayers(); renderLobby(); shareMapChoice();
+  },
   map: m => { if (!isHost()) { session.mapChoice = m.choice; renderLobby(); } },
   start: m => startRace(m.humans, m.map),
-  car: m => { if (net.inRace) applyRemote(game.cars[m.id], m.s); },
+  car: m => { if (net.inRace) applyRemote(carById(m.id), m.s); },
   world: m => { if (net.inRace && !isHost()) applyWorld(m); },
   item: m => { if (m.id === net.myId) me().item = m.item; },
   spin: m => { if (m.id === net.myId) hitBanana(me()); },
@@ -139,10 +150,10 @@ function worldMsg() {
 function applyWorld(m) {
   if (m.state !== game.state) setState(m.state);
   game.countdown = m.countdown;
-  m.ai.forEach(s => applyRemote(game.cars[s.id], s));
+  m.ai.forEach(s => applyRemote(carById(s.id), s));
   game.boxes.forEach((b, i) => { b.t = m.boxes[i]; });
   game.bananas = m.bananas.map(([x, y, h]) => ({ x, y, h: h || 0 }));
-  game.finishOrder = m.finish.map(id => game.cars[id]);
+  game.finishOrder = m.finish.map(carById).filter(Boolean);
 }
 
 // Mueve un coche remoto hacia su última posición conocida, prediciendo hacia dónde va

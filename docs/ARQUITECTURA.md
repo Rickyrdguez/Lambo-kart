@@ -156,7 +156,9 @@ flowchart TD
     C[Invitado 3] <--> S
 ```
 
-El servidor **no conoce las reglas del juego**: asigna huecos (0 = anfitrión, 1–3 = invitados), mantiene la lista de la sala de espera y reenvía cada mensaje a los demás jugadores. Si el anfitrión se va, la sala se cierra.
+El servidor **no conoce las reglas del juego**: asigna huecos (0 = anfitrión, 1–6 = invitados), mantiene la lista de la sala de espera y reenvía cada mensaje a los demás jugadores. Si el anfitrión se va, la sala se cierra.
+
+**Tamaño de la sala**: el anfitrión elige de 2 a 7 jugadores al crearla (`?size=`) y lo puede cambiar en la sala de espera (mensaje `size`). El servidor guarda el tamaño junto a los datos del anfitrión, rechaza con `full` a quien llegue con la sala llena y nunca deja bajar el tamaño por debajo de los jugadores que ya hay. Al empezar, si hay menos de 4 jugadores, se rellenan los huecos libres con karts de IA hasta llegar a 4 (`MIN_CARS` en [`config.js`](../src/config.js)).
 
 ### Quién simula qué
 
@@ -175,7 +177,8 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 | Mensaje | Origen → destino | Contenido |
 |---|---|---|
 | `welcome` | servidor → jugador | Hueco asignado |
-| `lobby` | servidor → todos | Jugadores en la sala |
+| `lobby` | servidor → todos | Jugadores en la sala y tamaño de la sala |
+| `size` | anfitrión → servidor | Cambia cuántos jugadores caben (2–7) |
 | `taken` / `noroom` / `full` | servidor → jugador | Código en uso / no existe la sala / sala llena |
 | `closed` | servidor → invitados | El anfitrión se ha ido |
 | `hello` | jugador → servidor | Nombre del jugador |

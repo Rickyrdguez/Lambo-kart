@@ -2,14 +2,16 @@
 //
 // Cada partida es una "sala" identificada por su código de 5 letras. Todos los jugadores de
 // una sala se conectan por WebSocket seguro (wss, puerto 443) al mismo Durable Object, que:
-//   - asigna a cada jugador un hueco (0 = anfitrión, 1-3 = invitados),
+//   - asigna a cada jugador un hueco (0 = anfitrión, 1-6 = invitados),
+//   - no deja entrar a más jugadores que el tamaño de sala que eligió el anfitrión (2-7),
 //   - mantiene la lista de la sala de espera,
 //   - y reenvía cada mensaje de un jugador a todos los demás.
 // La lógica del juego sigue en el navegador del anfitrión; aquí solo se reenvía.
 import { DurableObject } from 'cloudflare:workers';
 
-const MAX_PLAYERS = 4;
+const MAX_PLAYERS = 7, MIN_PLAYERS = 2, DEFAULT_ROOM = 4; // tamaño de sala (lo elige el anfitrión)
 const MAX_MESSAGE = 8192; // bytes
+const clampSize = n => Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Number(n) || DEFAULT_ROOM));
 const ROOM_PATH = /^\/room\/([A-HJ-NP-Z2-9]{5})$/;
 
 // Webs desde las que se puede jugar (evita que otras páginas usen el servidor)
@@ -35,22 +37,29 @@ export default {
 
 export class Room extends DurableObject {
   async fetch(request) {
-    const create = new URL(request.url).searchParams.get('create') === '1';
+    const params = new URL(request.url).searchParams, create = params.get('create') === '1';
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server); // API de "hibernación": no gasta mientras nadie habla
     const players = this.players();
     const error = create && players.length ? 'taken'          // el código ya está en uso
       : !create && !players.length ? 'noroom'                  // no existe esa partida
-      : players.length >= MAX_PLAYERS ? 'full' : null;
+      : players.length >= this.size(players) ? 'full' : null;
     if (error) {
       server.send(JSON.stringify({ t: error }));
       server.close(1000, error);
     } else {
       const id = freeSlot(players);
-      server.serializeAttachment({ id, name: '' });
+      // el anfitrión (hueco 0) guarda el tamaño de la sala
+      server.serializeAttachment(create ? { id, name: '', size: clampSize(params.get('size')) } : { id, name: '' });
       server.send(JSON.stringify({ t: 'welcome', id }));
     }
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Tamaño de la sala: lo guarda el anfitrión
+  size(players = this.players()) {
+    const host = players.find(p => p.id === 0);
+    return host ? host.size || DEFAULT_ROOM : DEFAULT_ROOM;
   }
 
   // Jugadores aceptados en la sala (con su WebSocket)
@@ -74,6 +83,13 @@ export class Room extends DurableObject {
       return;
     }
     if (!me.name) return; // aún no se ha presentado
+    if (msg.t === 'size') {   // el anfitrión cambia el tamaño (nunca por debajo de los que ya hay)
+      if (me.id !== 0) return;
+      me.size = Math.max(clampSize(msg.size), this.players().length);
+      ws.serializeAttachment(me);
+      this.sendLobby();
+      return;
+    }
     this.players(ws).forEach(p => safeSend(p.ws, message));
   }
 
@@ -99,8 +115,11 @@ export class Room extends DurableObject {
   }
 
   sendLobby(except) {
-    const list = this.players(except).filter(p => p.name);
-    const msg = JSON.stringify({ t: 'lobby', players: list.map(p => ({ id: p.id, name: p.name })).sort((a, b) => a.id - b.id) });
+    const all = this.players(except), list = all.filter(p => p.name);
+    const msg = JSON.stringify({
+      t: 'lobby', size: this.size(all),
+      players: list.map(p => ({ id: p.id, name: p.name })).sort((a, b) => a.id - b.id)
+    });
     list.forEach(p => safeSend(p.ws, msg));
   }
 }

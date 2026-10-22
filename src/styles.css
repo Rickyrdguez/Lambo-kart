@@ -57,6 +57,9 @@ button.ghost { background: transparent; color: #aaa; font-weight: 600; padding: 
 .maps.small .map-card { padding: 5px; gap: 4px; }
 .maps.small .map-card strong { font-size: 12px; text-align: center; }
 #lobby-map { font-weight: 600; color: #fff; }
+.size-row { align-items: center; justify-content: center; gap: 12px; font-weight: 600; }
+.size-row button { flex: none; width: 40px; height: 40px; padding: 0; font-size: 22px; border-radius: 50%; }
+.size-row strong { font-family: 'Russo One', sans-serif; font-size: 24px; color: #ffb400; min-width: 24px; text-align: center; }
 
 /* ---- Controles táctiles (solo con body.touch) ---- */
 /* --b: tamaño de los botones, se adapta al alto de la pantalla */
