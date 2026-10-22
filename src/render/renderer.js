@@ -7,8 +7,8 @@ import { track } from '../game/track.js';
 import { cameraView, lightMatrix } from './camera.js';
 import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
-import { buildWorld, buildProps } from './world.js';
-import { buildLambo, buildKart, buildItemBox, buildBanana, buildFlame, buildBlob } from './models.js';
+import { buildWorld, buildProps, buildLights } from './world.js';
+import { buildLambo, buildKart, buildItemBox, buildBanana, buildFlame, buildBlob, buildHeadlights } from './models.js';
 
 const SHADOW_SIZE = IS_TOUCH ? 1024 : SHADOW_SIZE_PC; // sombras más ligeras en móvil
 
@@ -96,14 +96,17 @@ export function initRenderer() {
   meshes.banana = upload(buildBanana());
   meshes.flames = [upload(buildFlame(18)), upload(buildFlame(24))];
   meshes.blob = upload(buildBlob());
+  meshes.headlights = upload(buildHeadlights());
 }
 
 // Vuelve a generar el escenario del circuito actual (al cambiar de mapa)
 export function loadWorld() {
   release(meshes.world);
   release(meshes.props);
+  release(meshes.lights);
   meshes.world = upload(buildWorld());
   meshes.props = upload(buildProps());
+  meshes.lights = track.map.theme.night ? upload(buildLights()) : null;
 }
 
 // Un modelo por tipo y color de coche, creado la primera vez que se necesita
@@ -121,16 +124,17 @@ function drawMesh(prog, mesh, model) {
 }
 
 const carModel = c => modelMatrix(c.x, c.y, c.angle, c.z, c.pitch);
-const groundModel = c => modelMatrix(c.x, c.y, c.angle); // la sombra de contacto se queda en el suelo
+// sombra de contacto y faros: en el suelo bajo el coche (también si va por un puente)
+const groundModel = c => modelMatrix(c.x, c.y, c.angle, c.ground || 0);
 
 // Todo lo que proyecta sombra
 function drawCasters(prog, t) {
   drawMesh(prog, meshes.props, IDENTITY);
   game.cars.forEach(c => drawMesh(prog, carMesh(c), carModel(c)));
   game.boxes.forEach(b => {
-    if (b.t <= 0) drawMesh(prog, meshes.box, modelMatrix(b.x, b.y, t * 1.5, 20 + Math.sin(t * 3) * 3));
+    if (b.t <= 0) drawMesh(prog, meshes.box, modelMatrix(b.x, b.y, t * 1.5, (b.h || 0) + 20 + Math.sin(t * 3) * 3));
   });
-  game.bananas.forEach(b => drawMesh(prog, meshes.banana, modelMatrix(b.x, b.y, 0)));
+  game.bananas.forEach(b => drawMesh(prog, meshes.banana, modelMatrix(b.x, b.y, 0, b.h || 0)));
 }
 
 // Luz y cielo del circuito actual
@@ -140,6 +144,7 @@ function setLight(prog, t) {
   gl.uniform3fv(loc(prog, 'uSunCol'), th.sunCol);
   gl.uniform3fv(loc(prog, 'uHorizon'), th.horizon);
   gl.uniform3fv(loc(prog, 'uZenith'), th.zenith);
+  gl.uniform1f(loc(prog, 'uDisc'), th.disc ?? 1500);
   gl.uniform1f(loc(prog, 'uTime'), t);
 }
 
@@ -168,6 +173,7 @@ function skyPass(v, t) {
   gl.uniform3fv(loc(progSky, 'uUp'), v.up);
   gl.uniform2fv(loc(progSky, 'uTan'), v.tan);
   gl.uniform1f(loc(progSky, 'uClouds'), track.map.theme.clouds);
+  gl.uniform1f(loc(progSky, 'uStars'), track.map.theme.stars ?? 0);
   gl.bindVertexArray(emptyVao);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
@@ -183,6 +189,7 @@ function mainPass(v, lightVP, t) {
   const th = track.map.theme;
   ['uGroundA', 'uGroundB', 'uGroundC'].forEach((name, i) => gl.uniform3fv(loc(progMain, name), th.ground[i]));
   gl.uniform1f(loc(progMain, 'uFog'), th.fog);
+  gl.uniform1f(loc(progMain, 'uAmbient'), th.ambient ?? 1);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, shadowMap.tex);
   gl.uniform1i(loc(progMain, 'uShadow'), 0);
@@ -192,6 +199,7 @@ function mainPass(v, lightVP, t) {
     if (c.boost > 0) drawMesh(progMain, meshes.flames[Math.random() < 0.5 ? 0 : 1], carModel(c));
   });
   drawBlobs();
+  if (meshes.lights) drawLights();
 }
 
 function drawBlobs() {
@@ -199,6 +207,18 @@ function drawBlobs() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
   game.cars.forEach(c => drawMesh(progMain, meshes.blob, groundModel(c)));
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+}
+
+// 4) De noche: charcos de luz de las farolas y faros de los coches, que se suman a lo de debajo.
+// Es una forma barata de "iluminar" sin calcular luces de verdad.
+function drawLights() {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  gl.depthMask(false);
+  drawMesh(progMain, meshes.lights, IDENTITY);
+  game.cars.forEach(c => { if (c.sink <= 0) drawMesh(progMain, meshes.headlights, groundModel(c)); });
   gl.depthMask(true);
   gl.disable(gl.BLEND);
 }

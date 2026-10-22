@@ -6,6 +6,7 @@ const HEAD = '#version 300 es\nprecision highp float;\n';
 const COMMON = `
 uniform vec3 uSun; uniform vec3 uSunCol; uniform float uTime;
 uniform vec3 uHorizon; uniform vec3 uZenith;
+uniform float uDisc; // tamaño del disco del sol o la luna (más bajo = más grande)
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -20,7 +21,7 @@ vec3 skyCol(vec3 d) {
   float y = max(d.y, 0.0);
   vec3 c = mix(uHorizon, uZenith, pow(y, 0.5));
   float s = max(dot(d, uSun), 0.0);
-  return c + uSunCol * (pow(s, 1500.0) * 30.0 + pow(s, 10.0) * 0.05);
+  return c + uSunCol * (pow(s, uDisc) * 30.0 + pow(s, 10.0) * 0.05);
 }
 vec3 tonemap(vec3 x) {
   x = clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
@@ -46,6 +47,7 @@ in vec3 vPos; in vec3 vNor; in vec3 vCol; in vec2 vUv; in float vMat; in vec4 vL
 uniform sampler2DShadow uShadow; uniform vec3 uCam;
 uniform vec3 uGroundA, uGroundB, uGroundC; // colores del suelo según el circuito
 uniform float uFog;
+uniform float uAmbient; // 1 de día, más bajo de noche
 out vec4 outColor;
 
 // Sombra suavizada con 9 muestras (PCF)
@@ -80,7 +82,7 @@ vec3 albedo(int m, float dist) {
 // Luz del sol + cielo, brillo especular y reflejos con efecto Fresnel
 vec3 shade(int m, vec3 base, vec3 N, vec3 V) {
   float sh = shadowAt(), ndl = max(dot(N, uSun), 0.0);
-  vec3 amb = mix(vec3(0.12, 0.11, 0.09), vec3(0.42, 0.5, 0.68), N.y * 0.5 + 0.5) * 0.75;
+  vec3 amb = mix(vec3(0.12, 0.11, 0.09), vec3(0.42, 0.5, 0.68), N.y * 0.5 + 0.5) * 0.75 * uAmbient;
   vec3 col = base * (amb + uSunCol * ndl * sh);
   float spec = 0.04, gloss = 16.0, refl = 0.0;
   if (m == 1) { spec = 1.2; gloss = 250.0; refl = 0.05; }  // pintura
@@ -116,6 +118,16 @@ vec3 water(vec3 V) {
   return col + uSunCol * pow(max(dot(R, uSun), 0.0), 400.0) * 6.0 * sh;
 }
 
+// Fachada con una rejilla de ventanas (vUv cuenta ventanas); algunas encendidas al azar
+vec3 windows(vec3 base, vec3 N, vec3 V) {
+  vec3 facade = shade(0, base, N, V);
+  vec2 cell = floor(vUv), f = fract(vUv);
+  float win = step(0.18, f.x) * step(f.x, 0.82) * step(0.22, f.y) * step(f.y, 0.78) * step(abs(N.y), 0.5);
+  vec3 lit = vec3(1.0, 0.72, 0.38) * (1.2 + 1.6 * hash(cell * 1.7 + 3.1));
+  vec3 glass = vec3(0.02, 0.025, 0.04);
+  return mix(facade, hash(cell + vCol.rg * 91.0) > 0.55 ? lit : glass, win);
+}
+
 void main() {
   int m = int(vMat + 0.5);
   if (m == 9) { // sombra de contacto (semitransparente)
@@ -124,12 +136,19 @@ void main() {
     return;
   }
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
+  float fog = 1.0 - exp(-dist * uFog);
+  if (m == 12 || m == 13) { // luces que se SUMAN a lo de debajo (farolas y faros)
+    vec2 q = vUv * 2.0 - 1.0;
+    float a = m == 12 ? pow(1.0 - smoothstep(0.0, 1.0, length(q)), 2.0) * 0.55
+      : pow(1.0 - vUv.x, 1.5) * smoothstep(0.0, 0.08, vUv.x) * (1.0 - smoothstep(0.5, 1.0, abs(q.y))) * 0.6;
+    outColor = vec4(vCol * a * (1.0 - fog), 1.0);
+    return;
+  }
   vec3 N = normalize(vNor);
   if (dot(N, V) < 0.0) N = -N;
   vec3 base = albedo(m, dist);
-  vec3 col = m == 3 ? base * 4.0 : m == 11 ? water(V) : shade(m, base, N, V);
+  vec3 col = m == 3 ? base * 4.0 : m == 11 ? water(V) : m == 14 ? windows(base, N, V) : shade(m, base, N, V);
   vec3 D = -V;
-  float fog = 1.0 - exp(-dist * uFog);
   col = mix(col, skyCol(normalize(vec3(D.x, max(D.y, 0.0) * 0.3 + 0.01, D.z))), fog);
   outColor = vec4(tonemap(col), 1.0);
 }`;
@@ -155,15 +174,22 @@ export const SKY_FS = HEAD + COMMON + `
 in vec2 vNdc;
 uniform vec3 uFwd, uRight, uUp; uniform vec2 uTan;
 uniform float uClouds; // umbral de nubes: más bajo = más nublado
+uniform float uStars;  // 1 = cielo de noche con estrellas
 out vec4 outColor;
 void main() {
   vec3 d = normalize(uFwd + vNdc.x * uTan.x * uRight + vNdc.y * uTan.y * uUp);
   vec3 col = skyCol(d);
-  if (d.y > 0.0) { // nubes que se mueven
+  if (d.y > 0.0) { // nubes que se mueven (de noche, apenas iluminadas)
     vec2 uv = d.xz / (d.y + 0.08) * 1.2 + vec2(uTime * 0.006, uTime * 0.002);
     float c = smoothstep(uClouds, uClouds + 0.3, fbm(uv * 1.6));
-    float lit = 0.8 + 0.3 * max(dot(d, uSun), 0.0);
+    float lit = (0.8 + 0.3 * max(dot(d, uSun), 0.0)) * clamp(length(uHorizon) * 1.2, 0.05, 1.0);
     col = mix(col, vec3(1.05, 1.0, 0.97) * 1.3 * lit, c * smoothstep(0.0, 0.25, d.y) * 0.9);
+  }
+  if (uStars > 0.0 && d.y > 0.05) { // estrellas: pocos puntos repartidos al azar (muy barato)
+    vec2 sp = vec2(atan(d.z, d.x), asin(d.y)) * 90.0;
+    vec2 cell = floor(sp);
+    float star = step(0.993, hash(cell)) * smoothstep(0.35, 0.0, length(fract(sp) - 0.5));
+    col += vec3(0.9, 0.95, 1.0) * star * uStars * (0.6 + 0.8 * hash(cell + 7.0)) * smoothstep(0.05, 0.3, d.y);
   }
   outColor = vec4(tonemap(col), 1.0);
 }`;

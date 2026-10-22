@@ -73,7 +73,7 @@ function mapPreview(id) {
   ctx.strokeStyle = '#2b2c31'; ctx.lineWidth = 7; ctx.stroke();
   ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = '#ffc400';
-  map.ramps.forEach(seg => { ctx.beginPath(); ctx.arc(px(pts[seg].x), py(pts[seg].y), 4, 0, Math.PI * 2); ctx.fill(); });
+  (map.ramps || []).forEach(seg => { ctx.beginPath(); ctx.arc(px(pts[seg].x), py(pts[seg].y), 4, 0, Math.PI * 2); ctx.fill(); });
   return cv;
 }
 

@@ -13,17 +13,18 @@
 ![Sin dependencias](https://img.shields.io/badge/dependencias-0-brightgreen)
 ![Licencia MIT](https://img.shields.io/badge/licencia-MIT-blue)
 
-![Carrera](docs/carrera.jpg)
+![Ciudad Neón](docs/ciudad.jpg)
 
 </div>
 
 ## ✨ Características
 
 - 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo** y **plátanos**, marcador de posición, minimapa y clasificación final.
-- 🗺️ **Tres circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
+- 🗺️ **Cuatro circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
   - *Valle Verde*: prados, pinos y una rampa.
   - *Pico Nevado*: nieve, curvas en S, pinos nevados y dos rampas.
   - *Isla Tropical*: atardecer junto al mar, **muelle de madera** (si te sales, al agua), **salto sobre una cala** con placa de turbo, **atajo de arena** entre palmeras y un arco de roca.
+  - *Ciudad Neón*: de noche, trazado en 8 con un **puente** que cruza por encima de la propia pista, **túnel**, **callejón** con conos, rascacielos con ventanas encendidas, neones, farolas, faros, luna y estrellas.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
 - 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
 - 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
@@ -33,6 +34,7 @@
   - Cielo con nubes procedurales, niebla atmosférica y *tone mapping* ACES
   - Asfalto, hierba, nieve y arena con texturas generadas por ruido en el shader
   - Mar animado con olas, reflejos del cielo y destellos del sol
+  - Noche: ventanas procedurales, luces de farolas y faros como "charcos de luz" aditivos, luna y estrellas
 - 🚗 **Modelos 3D generados por código**: el Lamborghini, los karts, los árboles y las montañas se construyen a partir de secciones y formas geométricas.
 - 🤖 **IA de los rivales** que sigue la trazada y ajusta su ritmo para que la carrera esté igualada (*rubber banding*).
 - 📦 **Cero dependencias de desarrollo**: JavaScript moderno con módulos ES, sin *bundler* ni paso de compilación.

@@ -13,7 +13,8 @@ export function makeCar(id, name, color, human) {
     model: human ? 'lambo' : 'kart',
     x: p.x, y: p.y, angle: track.points[seg].a, speed: 0,
     z: 0, vz: 0, air: 0, pitch: 0,              // altura, velocidad vertical, tiempo en el aire, inclinación
-    sink: 0, onShortcut: false,                 // hundiéndose en el agua, yendo por un atajo
+    ground: 0, trackDist: 0,                    // altura del suelo bajo el coche, distancia al centro de la pista
+    sink: 0, onShortcut: false, shortcutSpeed: 1, // hundiéndose en el agua, yendo por un atajo
     seg, lap: 0, done: false, offTrack: false,
     item: null, boost: 0, spin: 0,
     base, maxSpeed: base,

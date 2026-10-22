@@ -1,19 +1,21 @@
 // Trazado del circuito: una curva suave (Catmull-Rom) que pasa por los puntos de control del mapa.
 // La pista se guarda como una lista de puntos; el "segmento" de un coche es el índice
 // del punto más cercano y sirve para contar vueltas y posiciones.
-// Aquí también están los elementos especiales: rampas, placas de turbo, atajos, arcos y,
-// en los circuitos de isla, qué es tierra y qué es agua.
+// Aquí también están los elementos especiales: altura de la pista (puentes), rampas, placas de
+// turbo, atajos, arcos, túneles y, en los circuitos de isla, qué es tierra y qué es agua.
 import { TRACK_WIDTH } from '../config.js';
+import { angDiff } from '../core/math.js';
 
 const SCALE = 1.4;  // tamaño de los circuitos
 const STEPS = 40;   // puntos por tramo entre puntos de control
 const RAMP_LEN = 80, RAMP_HEIGHT = 16;
 const PAD_LEN = 50;
 const CELL = 25;    // tamaño de celda del mapa de tierra/agua
+const WALL = TRACK_WIDTH / 2 - 14; // en los tramos elevados, el coche no pasa de aquí
 
 export const track = {
   map: null, points: [], N: 0, bounds: null, decor: [],
-  ramps: [], pads: [], shortcuts: [], arches: [], water: [], land: null
+  ramps: [], pads: [], shortcuts: [], arches: [], water: [], land: null, tunnel: null
 };
 
 function catmull(p0, p1, p2, p3, t) {
@@ -22,7 +24,8 @@ function catmull(p0, p1, p2, p3, t) {
          + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
 }
 
-// Puntos de la curva cerrada que pasa por los puntos de control. a = dirección en cada punto.
+// Puntos de la curva cerrada que pasa por los puntos de control.
+// a = dirección, len = distancia al siguiente punto.
 export function splinePoints(control) {
   const pts = control.map(p => [p[0] * SCALE, p[1] * SCALE]), n = pts.length, out = [];
   for (let i = 0; i < n; i++) {
@@ -32,7 +35,11 @@ export function splinePoints(control) {
       out.push({ x: catmull(a[0], b[0], c[0], d[0], t), y: catmull(a[1], b[1], c[1], d[1], t) });
     }
   }
-  out.forEach((p, i) => { const q = out[(i + 1) % out.length]; p.a = Math.atan2(q.y - p.y, q.x - p.x); });
+  out.forEach((p, i) => {
+    const q = out[(i + 1) % out.length];
+    p.a = Math.atan2(q.y - p.y, q.x - p.x);
+    p.len = Math.hypot(q.x - p.x, q.y - p.y);
+  });
   return out;
 }
 
@@ -43,9 +50,10 @@ export function computeBounds(pts) {
 
 export function buildTrack(map) {
   const pts = splinePoints(map.points);
-  Object.assign(track, { map, points: pts, N: pts.length, bounds: computeBounds(pts) });
+  pts.forEach((p, i) => { p.h = bridgeHeight(map.bridge, i); });
+  Object.assign(track, { map, points: pts, N: pts.length, bounds: computeBounds(pts), tunnel: map.tunnel || null });
   track.ramps = (map.ramps || []).map(seg => zone(seg, RAMP_LEN, { h: RAMP_HEIGHT }));
-  track.pads = (map.boostPads || []).map(seg => zone(seg, PAD_LEN, {}));
+  track.pads = (map.boostPads || []).map(seg => zone(seg, PAD_LEN, { h: pts[seg].h }));
   track.shortcuts = (map.shortcuts || []).map(s => ({ ...s, a: pointAt(s.from, 0), b: pointAt(s.to, 0) }));
   track.arches = (map.arches || []).map(seg => ({ ...pts[seg], seg }));
   track.water = map.island ? map.island.water : [];
@@ -62,6 +70,8 @@ export function pointAt(seg, lane) {
 // Busca el punto de la pista más cercano, empezando desde el último conocido.
 // Si el coche se ha alejado mucho, busca más lejos; si aun así no lo encuentra, en toda la
 // pista (lost = true: en ese caso no se cuentan vueltas con ese salto).
+// Como solo se busca cerca del último segmento, en un cruce de la pista (puente) cada coche
+// sigue en el tramo por el que iba.
 export function nearestSeg(x, y, from) {
   let r = searchSegs(x, y, from, -10, 30);
   if (r.d > TRACK_WIDTH) r = searchSegs(x, y, from, -60, 150);
@@ -78,6 +88,49 @@ function searchSegs(x, y, from, k0, k1) {
   }
   return { i: best, d: Math.sqrt(bd) };
 }
+
+// ================== Altura de la pista (puentes) ==================
+// El puente sube suavemente, sigue recto arriba y vuelve a bajar
+function bridgeHeight(b, i) {
+  if (!b || i < b.from || i > b.to) return 0;
+  const smooth = t => t * t * (3 - 2 * t);
+  if (i < b.up) return b.height * smooth((i - b.from) / (b.up - b.from));
+  if (i > b.down) return b.height * smooth((b.to - i) / (b.to - b.down));
+  return b.height;
+}
+
+// Altura de la calzada en (x, y) para un coche en el segmento seg (interpola entre puntos)
+function roadHeight(seg, x, y) {
+  const P = track.points, N = track.N;
+  const a = P[seg], b = P[(seg + 1) % N], prev = P[(seg - 1 + N) % N];
+  if (!a.h && !b.h && !prev.h) return 0;
+  const t = ((x - a.x) * (b.x - a.x) + (y - a.y) * (b.y - a.y)) / (a.len * a.len);
+  return t >= 0 ? a.h + (b.h - a.h) * Math.min(1, t) : a.h + (prev.h - a.h) * Math.min(1, -t);
+}
+
+// Altura del suelo bajo un coche: la calzada (si va por ella) más una rampa si la pisa
+export function groundAt(c) {
+  const road = c.trackDist <= TRACK_WIDTH / 2 + 30 ? roadHeight(c.seg, c.x, c.y) : 0;
+  const ramp = rampUnder(c.x, c.y);
+  return road + (ramp ? ramp.h : 0);
+}
+
+// En los tramos elevados hay muros: si el coche llega al borde, se le devuelve a la calzada
+// y se le endereza un poco, como si rozara el muro.
+export function keepOnRoad(c) {
+  const p = track.points[c.seg];
+  if (p.h < 1 || c.z < p.h - 20) return;
+  const nx = -Math.sin(p.a), ny = Math.cos(p.a), side = (c.x - p.x) * nx + (c.y - p.y) * ny;
+  if (Math.abs(side) <= WALL) return;
+  const push = Math.sign(side) * WALL - side;
+  c.x += nx * push;
+  c.y += ny * push;
+  const along = Math.abs(angDiff(p.a, c.angle)) < Math.PI / 2 ? p.a : p.a + Math.PI;
+  c.angle += angDiff(along, c.angle) * 0.25;
+  c.speed *= 0.98;
+}
+
+export const inTunnel = seg => !!track.tunnel && seg >= track.tunnel.from && seg <= track.tunnel.to;
 
 // ================== Rampas y placas de turbo ==================
 // Zona rectangular sobre la pista que empieza en el segmento seg y mide len de largo
@@ -103,7 +156,8 @@ export function rampUnder(x, y) {
   return null;
 }
 
-export const onBoostPad = (x, y) => track.pads.some(p => insideZone(p, x, y) >= 0);
+// La placa tiene que estar a la altura del coche (no vale pasar por debajo de un puente)
+export const onBoostPad = c => track.pads.some(p => Math.abs(c.z - p.h) < 10 && insideZone(p, c.x, c.y) >= 0);
 
 // ================== Atajos ==================
 // Distancia de (x, y) a la línea del atajo y posición a lo largo de él (0 = inicio, 1 = fin)
@@ -113,13 +167,13 @@ function shortcutPos(s, x, y) {
   return { t, d: Math.hypot(x - (s.a.x + abx * t), y - (s.a.y + aby * t)) };
 }
 
-// Si (x, y) va por un atajo, devuelve el segmento de la pista equivalente; si no, -1
+// Si (x, y) va por un atajo, devuelve el segmento de la pista equivalente y lo que frena; si no, null
 export function shortcutAt(x, y) {
   for (const s of track.shortcuts) {
     const { t, d } = shortcutPos(s, x, y);
-    if (d <= s.width / 2 && t > 0.03 && t < 0.97) return Math.round(s.from + t * (s.to - s.from));
+    if (d <= s.width / 2 && t > 0.03 && t < 0.97) return { seg: Math.round(s.from + t * (s.to - s.from)), speed: s.speed ?? 0.85 };
   }
-  return -1;
+  return null;
 }
 
 const nearShortcut = (x, y, margin) => track.shortcuts.some(s => shortcutPos(s, x, y).d < s.width / 2 + margin);
@@ -179,11 +233,14 @@ export function isWater(x, y, seg, d) {
 }
 
 // ================== Decorado ==================
-function distToTrack(x, y) {
-  let best = Infinity;
-  for (const p of track.points) best = Math.min(best, Math.hypot(p.x - x, p.y - y));
-  return best;
+// Punto de la pista más cercano a (x, y) y su distancia
+function nearestPoint(x, y) {
+  let best = null, bd = Infinity;
+  for (const p of track.points) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
+  return { p: best, d: bd };
 }
+
+const distToTrack = (x, y) => nearestPoint(x, y).d;
 
 // Reparte "count" objetos al azar en tierra, a más de "margin" del borde de la pista
 function scatter(count, margin, add, extraCheck = () => true) {
@@ -191,28 +248,55 @@ function scatter(count, margin, add, extraCheck = () => true) {
   for (let placed = 0, tries = 0; placed < count && tries < count * 40; tries++) {
     const x = b.x0 - R + Math.random() * (b.x1 - b.x0 + 2 * R);
     const y = b.y0 - R + Math.random() * (b.y1 - b.y0 + 2 * R);
-    if (!isLand(x, y) || nearShortcut(x, y, 40)) continue;
+    if (!isLand(x, y)) continue;
     const d = distToTrack(x, y);
-    if (d < TRACK_WIDTH / 2 + margin || !extraCheck(d)) continue;
-    add(x, y);
-    placed++;
+    if (d < TRACK_WIDTH / 2 + margin || !extraCheck(d, x, y)) continue;
+    if (add(x, y, d) !== false) placed++;
   }
 }
 
 function placeDecor(theme) {
   const out = [], trees = theme.trees, extra = theme.decor || {};
+  const free = (x, y, m) => !nearShortcut(x, y, m);
   scatter(trees.count, 80, (x, y) => out.push({
     type: trees.kind === 'palm' ? 'palm' : 'tree', x, y, s: 0.7 + Math.random() * 0.7,
     pine: Math.random() < (trees.pine ?? 1), dir: Math.random() * Math.PI * 2, lean: 0.4 + Math.random() * 0.8
-  }));
-  if (extra.rocks) scatter(extra.rocks, 60, (x, y) => out.push({ type: 'rock', x, y, s: 0.6 + Math.random() * 1.4 }));
+  }), (d, x, y) => free(x, y, 40));
+  if (extra.rocks) scatter(extra.rocks, 60, (x, y) => out.push({ type: 'rock', x, y, s: 0.6 + Math.random() * 1.4 }), (d, x, y) => free(x, y, 40));
   if (extra.umbrellas) {
     const shore = track.map.island.radius - 220; // sombrillas cerca del mar
-    scatter(extra.umbrellas, 100, (x, y) => out.push({ type: 'umbrella', x, y, color: Math.random() * 4 | 0 }), d => d > shore);
+    scatter(extra.umbrellas, 100, (x, y) => out.push({ type: 'umbrella', x, y, color: Math.random() * 4 | 0 }), (d, x, y) => d > shore && free(x, y, 40));
   }
   if (extra.lighthouse) {
     const { seg, side } = extra.lighthouse, p = pointAt(seg, side * (track.map.island.radius - 90));
     out.push({ type: 'lighthouse', x: p.x, y: p.y });
   }
+  if (extra.buildings) placeBuildings(out, extra.buildings);
+  if (extra.lamps) placeLamps(out, extra.lamps);
   return out;
+}
+
+// Edificios girados hacia la pista, sin pisarla ni pisarse entre ellos. Los cercanos llevan neón.
+function placeBuildings(out, count) {
+  const placed = [];
+  scatter(count, 60, (x, y) => {
+    const hw = 50 + Math.random() * 60, hd = 50 + Math.random() * 60, r = Math.max(hw, hd) * 1.25;
+    const { p, d } = nearestPoint(x, y);
+    if (d < TRACK_WIDTH / 2 + 40 + r || nearShortcut(x, y, r + 15)) return false;
+    if (placed.some(o => Math.hypot(o.x - x, o.y - y) < o.r + r + 15)) return false;
+    const b = {
+      type: 'building', x, y, r, hw, hd, h: 120 + Math.random() * 360,
+      angle: Math.atan2(p.y - y, p.x - x), color: Math.random() * 4 | 0,
+      neon: d < 520 && Math.random() < 0.6 ? { color: Math.random() * 4 | 0, h: 30 + Math.random() * 70 } : null
+    };
+    placed.push(b);
+    out.push(b);
+  });
+}
+
+// Farolas a lo largo de la pista, alternando lados (en el túnel hay luces en el techo)
+function placeLamps(out, every) {
+  for (let i = 0, k = 0; i < track.N; i += every, k++) {
+    if (!inTunnel(i)) out.push({ type: 'lamp', seg: i, side: k % 2 ? 1 : -1 });
+  }
 }

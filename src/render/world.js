@@ -1,20 +1,24 @@
-// Escenario en 3D: suelo o isla con mar, montañas, asfalto, bordillos, meta, muelle, rampas,
-// placas de turbo, atajos, arcos y decorado. Los colores salen del tema del circuito (game/maps.js).
+// Escenario en 3D: suelo o isla con mar, montañas o rascacielos, asfalto, bordillos, meta,
+// muelle, puente, túnel, rampas, placas de turbo, atajos, arcos, decorado y luces de noche.
+// Los colores salen del tema del circuito (game/maps.js).
 import { TRACK_WIDTH as W } from '../config.js';
 import { UP, rgb, norm3 } from '../core/math.js';
 import { modelMatrix } from '../core/mat4.js';
-import { track, pointAt, waterRangeAt } from '../game/track.js';
+import { track, pointAt, waterRangeAt, inTunnel } from '../game/track.js';
 import { M, vtx, tri, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
 
 const theme = () => track.map.theme;
 const UP4 = [UP, UP, UP, UP];
 const SEA_LEVEL = -3;
+const TUNNEL_H = 115;  // altura del techo del túnel (por encima de la cámara, que va a 70)
+const DECK = 8;        // grosor del tablero del puente
+const elevated = i => track.points[i % track.N].h > 1;
 
 // Suelo, mar, montañas y pista (no proyectan sombra)
 export function buildWorld() {
   const g = [];
   if (track.land) buildIsland(g); else buildGround(g);
-  buildMountains(g);
+  if (theme().skyline) buildSkyline(g); else buildMountains(g);
   buildTrackMesh(g);
   track.pads.forEach(p => buildBoostPad(g, p));
   return g;
@@ -28,6 +32,8 @@ export function buildProps() {
   track.arches.forEach(a => buildArch(g, a));
   track.shortcuts.forEach(s => buildShortcut(g, s));
   track.water.filter(r => r.type === 'pier').forEach(r => buildPierPosts(g, r));
+  buildBridge(g);
+  if (track.tunnel) buildTunnel(g, track.tunnel);
   return g;
 }
 
@@ -40,14 +46,16 @@ function center() {
 function atSeg(g, seg, build) {
   const p = track.points[seg % track.N], local = [];
   build(local);
-  appendTransformed(g, local, modelMatrix(p.x, p.y, p.a));
+  appendTransformed(g, local, modelMatrix(p.x, p.y, p.a, p.h));
 }
 
 // ================== Pista ==================
-// Punto de la pista en 3D: segmento i (+ fracción f), desplazamiento lateral o, altura h
+// Punto de la pista en 3D: segmento i (+ fracción f), desplazamiento lateral o,
+// altura h sobre la calzada (que puede estar elevada, en el puente)
 function T(i, f, o, h) {
   const a = pointAt(i, o), b = pointAt(i + 1, o);
-  return [a.x + (b.x - a.x) * f, h, a.y + (b.y - a.y) * f];
+  const road = track.points[i % track.N].h * (1 - f) + track.points[(i + 1) % track.N].h * f;
+  return [a.x + (b.x - a.x) * f, h + road, a.y + (b.y - a.y) * f];
 }
 
 function trackStrip(g, i, f0, f1, o1, o2, h, color, mat) {
@@ -56,19 +64,23 @@ function trackStrip(g, i, f0, f1, o1, o2, h, color, mat) {
 }
 
 function buildTrackMesh(g) {
-  const { asphalt, curbs } = theme();
+  const { asphalt, curbs, lines } = theme();
+  // de noche las líneas brillan para que se vea bien por dónde va la pista
+  const line = lines ? [lines, M.EMIT] : ['#e6e6e6', M.MATTE], center = lines ? ['#3c3c3c', M.EMIT] : line;
   for (let i = 0; i < track.N; i++) {
     const water = waterRangeAt(i);
     if (water && water.type === 'cove') continue;            // la cala no tiene suelo: hay que saltarla
     if (water && water.type === 'pier') { pierDeck(g, i); continue; }
     trackStrip(g, i, 0, 1, -W / 2 - 2, W / 2 + 2, 0.3, asphalt, M.ASPHALT);
-    [0, 0.5].forEach((f, k) => {                              // bordillos de dos colores
-      trackStrip(g, i, f, f + 0.5, W / 2, W / 2 + 16, 0.5, curbs[k], M.MATTE);
-      trackStrip(g, i, f, f + 0.5, -W / 2 - 16, -W / 2, 0.5, curbs[k], M.MATTE);
-    });
-    trackStrip(g, i, 0, 1, W / 2 - 12, W / 2 - 7, 0.45, '#e6e6e6', M.MATTE);   // líneas laterales
-    trackStrip(g, i, 0, 1, -W / 2 + 7, -W / 2 + 12, 0.45, '#e6e6e6', M.MATTE);
-    if (i % 2 === 0) trackStrip(g, i, 0, 0.6, -2.5, 2.5, 0.45, '#e6e6e6', M.MATTE); // línea central
+    if (!elevated(i)) {                                       // en el puente hay muros en vez de bordillos
+      [0, 0.5].forEach((f, k) => {
+        trackStrip(g, i, f, f + 0.5, W / 2, W / 2 + 16, 0.5, curbs[k], M.MATTE);
+        trackStrip(g, i, f, f + 0.5, -W / 2 - 16, -W / 2, 0.5, curbs[k], M.MATTE);
+      });
+    }
+    trackStrip(g, i, 0, 1, W / 2 - 12, W / 2 - 7, 0.45, ...line);   // líneas laterales
+    trackStrip(g, i, 0, 1, -W / 2 + 7, -W / 2 + 12, 0.45, ...line);
+    if (i % 2 === 0) trackStrip(g, i, 0, 0.6, -2.5, 2.5, 0.45, ...center); // línea central
   }
   buildStartLine(g);
 }
@@ -130,17 +142,30 @@ function buildBoostPad(g, p) {
   [4, 19, 34].forEach(x => bothSides(s => {
     quadN(local, [[x, 0.6, -hw * s], [x + 8, 0.6, -hw * s], [x + 26, 0.6, 0], [x + 18, 0.6, 0]], UP4, col, M.EMIT);
   }));
-  appendTransformed(g, local, modelMatrix(p.x, p.y, p.a));
+  appendTransformed(g, local, modelMatrix(p.x, p.y, p.a, p.h || 0));
 }
 
-// Atajo: camino de arena compactada con postes de madera a los lados
+// Atajo: camino de arena con postes de madera, o callejón de asfalto con conos y vallas
 function buildShortcut(g, s) {
-  const len = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y), hw = s.width / 2, local = [];
-  quadN(local, [[0, 0.15, -hw], [0, 0.15, hw], [len, 0.15, hw], [len, 0.15, -hw]], UP4, rgb('#a07b4f'), M.MATTE);
+  const len = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y), hw = s.width / 2, local = [], alley = s.style === 'alley';
+  quadN(local, [[0, 0.15, -hw], [0, 0.15, hw], [len, 0.15, hw], [len, 0.15, -hw]], UP4,
+        rgb(alley ? '#26272c' : '#a07b4f'), alley ? M.ASPHALT : M.MATTE);
   for (let x = 120; x < len - 120; x += 60) {
-    bothSides(sd => box(local, x - 2, x + 2, 0, 12, ...sideZ(hw + 2, hw + 6, sd), '#5d3d22', M.MATTE));
+    bothSides(sd => {
+      const [z0, z1] = sideZ(hw + 2, hw + 6, sd);
+      if (!alley) return box(local, x - 2, x + 2, 0, 12, z0, z1, '#5d3d22', M.MATTE);
+      cone(local, x, (z0 + z1) / 2);
+      box(local, x + 10, x + 50, 6, 9, z0, z1, '#d9d9d9', M.MATTE); // valla
+    });
   }
   appendTransformed(g, local, modelMatrix(s.a.x, s.a.y, Math.atan2(s.b.y - s.a.y, s.b.x - s.a.x)));
+}
+
+// Cono de tráfico naranja con banda blanca
+function cone(g, x, z) {
+  frustumY(g, x, z, 0, 8, 5, 3, '#ff6a00', M.MATTE, 8);
+  frustumY(g, x, z, 8, 11, 3, 2.2, '#f2f2f2', M.MATTE, 8);
+  frustumY(g, x, z, 11, 16, 2.2, 0.4, '#ff6a00', M.MATTE, 8);
 }
 
 // Arco de roca natural por encima de la pista
@@ -280,4 +305,128 @@ function buildLighthouse(g, t) {
   frustumY(g, t.x, t.y, 140, 156, 14, 0, '#c62828', M.MATTE, 10);
 }
 
-const DECOR = { tree: buildTree, palm: buildPalm, rock: buildRock, umbrella: buildUmbrella, lighthouse: buildLighthouse };
+// ================== Ciudad ==================
+const FACADES = ['#2a2f3a', '#323848', '#24282f', '#3a3346'];
+const NEONS = ['#ff2bd6', '#2be8ff', '#a64bff', '#3dff8a'];
+
+// Caja de edificio con ventanas: en cada cara, uv cuenta ventanas (12 de ancho x 14 de alto)
+function buildingBox(g, hw, hd, h, color) {
+  const c = rgb(color), side = (pts, n, w) => quadN(g, pts, [n, n, n, n], c, M.WINDOWS,
+    [[0, 0], [w / 12, 0], [w / 12, h / 14], [0, h / 14]]);
+  side([[hw, 0, -hd], [hw, 0, hd], [hw, h, hd], [hw, h, -hd]], [1, 0, 0], hd * 2);
+  side([[-hw, 0, hd], [-hw, 0, -hd], [-hw, h, -hd], [-hw, h, hd]], [-1, 0, 0], hd * 2);
+  side([[hw, 0, hd], [-hw, 0, hd], [-hw, h, hd], [hw, h, hd]], [0, 0, 1], hw * 2);
+  side([[-hw, 0, -hd], [hw, 0, -hd], [hw, h, -hd], [-hw, h, -hd]], [0, 0, -1], hw * 2);
+  quadN(g, [[-hw, h, -hd], [hw, h, -hd], [hw, h, hd], [-hw, h, hd]], UP4, c, M.MATTE); // azotea
+}
+
+// Edificio girado hacia la pista; algunos con un cartel de neón en la fachada que la mira
+function buildBuilding(g, b) {
+  const local = [], k = 0.9 + Math.random() * 0.2; // color algo distinto en cada uno (cambia sus ventanas)
+  buildingBox(local, b.hw, b.hd, b.h, tint(FACADES[b.color], k));
+  if (b.neon) {
+    const w = Math.min(b.hd * 0.8, 45), y = b.neon.h;
+    box(local, b.hw + 0.5, b.hw + 3, y, y + 16, -w, w, NEONS[b.neon.color], M.EMIT);
+  }
+  appendTransformed(g, local, modelMatrix(b.x, b.y, b.angle));
+}
+
+// Farola: poste, brazo hacia la carretera y lámpara encendida
+function buildLamp(g, l) {
+  const o = l.side * (elevated(l.seg) ? W / 2 + 6 : W / 2 + 24); // en el puente, sobre el muro
+  atSeg(g, l.seg, loc => {
+    frustumY(loc, 0, o, 0, 72, 2.4, 1.8, '#3a3d45', M.MATTE, 6);
+    box(loc, -2, 2, 68, 72, ...(l.side > 0 ? [o - 34, o] : [o, o + 34]), '#3a3d45', M.MATTE);
+    box(loc, -5, 5, 64, 68, ...(l.side > 0 ? [o - 36, o - 22] : [o + 22, o + 36]), '#ffe2a8', M.EMIT);
+  });
+}
+
+// Rascacielos lejanos alrededor de la ciudad (en vez de montañas)
+function buildSkyline(g) {
+  const [cx, cz] = center();
+  for (let i = 0; i < 140; i++) {
+    const a = i / 140 * Math.PI * 2 + Math.random() * 0.02, R = 4200 + Math.random() * 2200, local = [];
+    const hw = 80 + Math.random() * 120, h = 200 + Math.random() * 500; // sin tapar la luna
+    buildingBox(local, hw, hw, h, tint(FACADES[i % 4], 0.8 + Math.random() * 0.3));
+    appendTransformed(g, local, modelMatrix(cx + Math.cos(a) * R, cz + Math.sin(a) * R, a));
+  }
+}
+
+// Puente: tablero con muros a los lados (tiras de neón encima) y pilares que no tocan la pista de abajo
+function buildBridge(g) {
+  for (let i = 0; i < track.N; i++) {
+    if (!elevated(i) && !elevated(i + 1)) continue;
+    const under = (o) => [T(i, 0, o, -DECK), T(i, 1, o, -DECK)];
+    const [a0, a1] = under(-W / 2 - 10), [b0, b1] = under(W / 2 + 10);
+    quadN(g, [a0, b0, b1, a1], Array(4).fill([0, -1, 0]), rgb('#2c2e35'), M.MATTE);   // parte de abajo
+    bothSides(s => {
+      const o0 = s * (W / 2 + 2), o1 = s * (W / 2 + 10);
+      wallQuad(g, i, o1, -DECK, 14, '#3b3e48');                                          // cara exterior
+      wallQuad(g, i, o0, 0, 14, '#4a4e5a');                                              // cara interior
+      trackStrip(g, i, 0, 1, Math.min(o0, o1), Math.max(o0, o1), 14, '#ff2bd6', M.EMIT); // neón encima
+    });
+    if (i % 6 === 0 && track.points[i].h > 30) bridgePillars(g, i);
+  }
+}
+
+// Pared vertical a lo largo del segmento i, a distancia lateral o, de h0 a h1 sobre la calzada
+function wallQuad(g, i, o, h0, h1, color) {
+  const pts = [T(i, 0, o, h0), T(i, 1, o, h0), T(i, 1, o, h1), T(i, 0, o, h1)];
+  let n = normalOf(pts);
+  if (Math.sign(n[0] * -Math.sin(track.points[i].a) + n[2] * Math.cos(track.points[i].a)) !== Math.sign(o)) n = n.map(v => -v);
+  quadN(g, pts, [n, n, n, n], rgb(color), M.MATTE);
+}
+
+function bridgePillars(g, i) {
+  const p = track.points[i];
+  bothSides(s => {
+    const q = pointAt(i, s * (W / 2 - 30));
+    if (nearOtherRoad(q.x, q.y, i)) return; // no poner pilares encima de la pista de abajo
+    box(g, q.x - 8, q.x + 8, 0, p.h - DECK, q.y - 8, q.y + 8, '#3b3e48', M.MATTE);
+  });
+}
+
+// ¿(x, y) está sobre otro tramo de la pista (no el del propio puente)?
+function nearOtherRoad(x, y, seg) {
+  return track.points.some((p, j) => Math.abs(j - seg) > 60 && !elevated(j) && Math.hypot(p.x - x, p.y - y) < W / 2 + 40);
+}
+
+// Túnel: paredes y techo con tiras de luz
+function buildTunnel(g, t) {
+  const L = W / 2 + 22;
+  for (let i = t.from; i < t.to; i++) {
+    wallQuad(g, i, L, 0, TUNNEL_H, '#4a4c55');
+    wallQuad(g, i, -L, 0, TUNNEL_H, '#4a4c55');
+    trackStrip(g, i, 0, 1, -L - 10, L + 10, TUNNEL_H + 10, '#3a3c44', M.MATTE);           // techo por fuera
+    const roof = [T(i, 0, -L, TUNNEL_H), T(i, 0, L, TUNNEL_H), T(i, 1, L, TUNNEL_H), T(i, 1, -L, TUNNEL_H)];
+    quadN(g, roof, Array(4).fill([0, -1, 0]), rgb('#2e3038'), M.MATTE);                    // techo por dentro
+    if (i % 3 === 0) {
+      const lamp = [T(i, 0, -8, TUNNEL_H - 0.5), T(i, 0, 8, TUNNEL_H - 0.5), T(i, 0.6, 8, TUNNEL_H - 0.5), T(i, 0.6, -8, TUNNEL_H - 0.5)];
+      quadN(g, lamp, Array(4).fill([0, -1, 0]), rgb('#ffe7b0'), M.EMIT);
+    }
+  }
+  [t.from, t.to].forEach(i => atSeg(g, i, l => box(l, -6, 6, 0, TUNNEL_H + 10, -L - 16, L + 16, '#55575f', M.MATTE))); // bocas
+}
+
+// Charcos de luz (de noche): bajo cada farola, bajo las luces del túnel y en el callejón
+export function buildLights() {
+  const g = [];
+  const pool = (x, y, h, r, color) => quadN(g, [[x - r, h, y - r], [x + r, h, y - r], [x + r, h, y + r], [x - r, h, y + r]],
+    UP4, rgb(color), M.LIGHT, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+  track.decor.filter(d => d.type === 'lamp').forEach(l => {
+    const p = pointAt(l.seg, l.side * (W / 2 - 20));
+    pool(p.x, p.y, track.points[l.seg].h + 0.7, 95, '#ffb35a');
+  });
+  if (track.tunnel) {
+    for (let i = track.tunnel.from; i < track.tunnel.to; i += 3) { const p = pointAt(i, 0); pool(p.x, p.y, 0.7, 80, '#ffd9a0'); }
+  }
+  track.shortcuts.filter(s => s.style === 'alley').forEach(s => {
+    pool((s.a.x + s.b.x) / 2, (s.a.y + s.b.y) / 2, 0.7, 70, '#7fd0ff');
+  });
+  return g;
+}
+
+const DECOR = {
+  tree: buildTree, palm: buildPalm, rock: buildRock, umbrella: buildUmbrella, lighthouse: buildLighthouse,
+  building: buildBuilding, lamp: buildLamp
+};

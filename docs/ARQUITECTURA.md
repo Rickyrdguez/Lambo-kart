@@ -46,6 +46,26 @@ Los circuitos con `island` en su definición no tienen un suelo infinito: tienen
 - **Atajo**: un segmento recto entre dos puntos de la pista, con suelo de arena compactada (un poco más lento que el asfalto). Mientras vas por él, tu progreso en la carrera se calcula a lo largo del atajo, así que las vueltas y las posiciones se siguen contando bien.
 - **Mar animado** ([`render/shaders.js`](../src/render/shaders.js)): la normal del agua se ondula con varias ondas senoidales que cambian con el tiempo. El color mezcla el agua turquesa con el reflejo del cielo (Fresnel) y añade destellos del sol.
 
+## Ciudad Neón: pista con altura, noche y luces
+
+### Un puente que cruza la propia pista
+
+El trazado es un **8**: la pista se cruza consigo misma en los segmentos 160 y 440. Cada punto de la pista tiene ahora una **altura** `h`. En `map.bridge` se define un tramo que sube suavemente (*smoothstep*), sigue recto a 100 de altura y vuelve a bajar.
+
+- **¿Arriba o abajo?** La lógica del juego sigue siendo 2D, así que en el cruce dos tramos ocupan el mismo sitio en el mapa. Se distinguen porque `nearestSeg` solo busca **cerca del último segmento** de cada coche: el que va por abajo sigue en los segmentos ~160 y el que va por el puente en los ~440.
+- **Altura del suelo** (`groundAt`): la altura de la calzada interpolada entre puntos, más la de una rampa si la hay. `updateHeight` ([`game/physics.js`](../src/game/physics.js)) mantiene el coche **pegado** al suelo mientras este suba o baje poco a poco (cuestas del puente). Si el suelo cae de golpe, como al final de una rampa, el coche sale volando con la velocidad vertical que llevaba.
+- **Muros**: en los tramos elevados, `keepOnRoad` devuelve el coche a la calzada si llega al borde y lo endereza un poco, como si rozara el muro.
+- **Objetos y coches a dos alturas**: las cajas y los plátanos guardan su altura `h`; solo afectan a coches a esa altura. Dos coches a distinta altura no chocan. La altura (`z` y `ground`) se envía por red.
+- **Pilares**: se colocan bajo el puente salvo donde caerían encima de la pista de abajo.
+
+### Noche sin coste de luces dinámicas
+
+- **Luna**: hace de "sol" (luz azulada y tenue, con sombras). Su disco es más grande gracias a `uDisc`. **Estrellas**: en el shader del cielo, la dirección de la mirada se divide en una rejilla y unas pocas celdas al azar se encienden. Es muy barato.
+- **Ventanas**: material `WINDOWS`. Las uv de cada fachada cuentan ventanas, y el shader decide con un *hash* cuáles están encendidas. Miles de ventanas sin dibujar ninguna por separado.
+- **Farolas y faros**: en vez de luces reales, se dibujan **"charcos de luz"** (círculos bajo las farolas y un cono delante de cada coche) que se **suman** a lo que hay debajo (*additive blending*). Queda casi igual y cuesta muy poco.
+- **Bordes brillantes**: las líneas de la pista son emisivas para que se vea bien por dónde va la carretera.
+- **Ambiente**: `uAmbient` baja la luz ambiente de noche.
+
 ## Móvil ([`ui/touch.js`](../src/ui/touch.js))
 
 - Se detecta una pantalla táctil con `matchMedia('(pointer: coarse)')`. Solo entonces se muestran los botones y se añade la clase `touch` al `<body>`.
@@ -152,7 +172,7 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 | `hello` | jugador → servidor | Nombre del jugador |
 | `map` | anfitrión → todos | Circuito elegido en la sala (o aleatorio) |
 | `start` | anfitrión → todos | Empieza la carrera, con el circuito ya sorteado |
-| `car` | cada jugador → todos | Posición, altura, velocidad, vuelta y objeto de su coche |
+| `car` | cada jugador → todos | Posición, altura (y la del suelo), velocidad, vuelta y objeto de su coche |
 | `world` | anfitrión → todos | Estado, IA, cajas, plátanos y llegada |
 | `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / has pisado un plátano |
 | `banana` | invitado → anfitrión | He tirado un plátano |

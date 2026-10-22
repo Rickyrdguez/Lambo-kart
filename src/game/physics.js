@@ -2,28 +2,29 @@
 import { CAR_RADIUS } from '../config.js';
 import { clamp } from '../core/math.js';
 import { game } from './state.js';
-import { rampUnder } from './track.js';
+import { groundAt } from './track.js';
 import { owned } from './cars.js';
 
 const ACCEL = 0.18, BRAKE = 0.3, FRICTION = 0.985, TURN = 0.055;
-const OFFTRACK_SLOWDOWN = 0.45, SHORTCUT_SLOWDOWN = 0.85, BOOST = 1.6;
+const OFFTRACK_SLOWDOWN = 0.45, BOOST = 1.6;
 const GRAVITY = 0.12;        // unidades/fotograma² hacia abajo
 const AIR_TURN = 0.3;        // en el aire se gira mucho menos
 const LANDING_BOOST = 25;    // mini-turbo al aterrizar tras un buen salto
 const MIN_JUMP_FOR_BOOST = 15;
+const STICK = 6;             // si el suelo baja menos que esto, el coche lo sigue (cuestas, puentes)
 
 // inp = { up, down, turn }   dt = fotogramas transcurridos (1 = 60 fps)
+// Mueve el coche en el plano; la altura se ajusta después con updateHeight().
 export function physics(c, inp, dt) {
   if (c.spin > 0) spinOut(c, dt);
   else if (c.air > 0) c.angle += inp.turn * TURN * AIR_TURN * dt; // en el aire solo se gira un poco
   else drive(c, inp, dt);
   c.x += Math.cos(c.angle) * c.speed * dt;
   c.y += Math.sin(c.angle) * c.speed * dt;
-  updateHeight(c, dt);
 }
 
 function drive(c, inp, dt) {
-  const terrain = c.onShortcut ? SHORTCUT_SLOWDOWN : c.offTrack ? OFFTRACK_SLOWDOWN : 1;
+  const terrain = c.onShortcut ? c.shortcutSpeed : c.offTrack ? OFFTRACK_SLOWDOWN : 1;
   let max = c.maxSpeed * terrain;
   if (c.boost > 0) { c.boost -= dt; max *= BOOST; c.speed = max; }
   else if (inp.up && c.speed < max) c.speed = Math.min(max, c.speed + ACCEL * dt);
@@ -36,22 +37,22 @@ function drive(c, inp, dt) {
   c.angle += inp.turn * TURN * grip * dt;
 }
 
-// Sobre una rampa el coche sube pegado a ella; al acabarse la rampa sigue subiendo con la
-// velocidad vertical que llevaba y la gravedad lo hace caer.
-function updateHeight(c, dt) {
-  const ramp = rampUnder(c.x, c.y), ground = ramp ? ramp.h : 0;
-  if (c.z > ground + 0.5) {
+// El coche va pegado al suelo mientras este sube o baja poco a poco (rampas, puentes).
+// Si el suelo desaparece de golpe (final de una rampa), sigue con la velocidad vertical que
+// llevaba y la gravedad lo hace caer. Llamar después de saber en qué segmento está.
+export function updateHeight(c, dt) {
+  const ground = groundAt(c);
+  c.ground = ground;
+  if (c.air === 0 && c.z - ground < STICK) {
+    c.vz = (ground - c.z) / Math.max(dt, 0.01); // subir o bajar con la carretera
+    c.z = ground;
+  } else {
     c.air += dt;
     c.vz -= GRAVITY * dt;
     c.z += c.vz * dt;
     if (c.z <= ground) land(c, ground);
-  } else {
-    c.z = ground;
-    c.vz = ramp ? c.speed * ramp.slope : 0;
-    c.air = 0;
   }
-  const target = c.air > 0 ? clamp(Math.atan2(c.vz, Math.max(1, Math.abs(c.speed))), -0.5, 0.5)
-    : ramp ? Math.atan(ramp.slope) : 0;
+  const target = clamp(Math.atan2(c.vz, Math.max(1, Math.abs(c.speed))), -0.5, 0.5);
   c.pitch += (target - c.pitch) * Math.min(1, 0.3 * dt);
 }
 

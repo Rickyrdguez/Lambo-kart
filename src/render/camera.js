@@ -18,9 +18,10 @@ export function updateCamera(dt) {
 
 export function cameraView(aspect) {
   const p = me(), fx = Math.cos(cam.a), fz = Math.sin(cam.a);
-  // al saltar, la cámara sube con el coche (algo menos, para que se note el salto)
-  const eye = [p.x - fx * CAM_DIST, CAM_H + p.z * 0.6, p.y - fz * CAM_DIST];
-  const target = [p.x + fx * 90, 12 + p.z * 0.8, p.y + fz * 90];
+  // la cámara sube con la carretera (puentes) y, al saltar, algo menos que el coche para que se note
+  const ground = p.ground || 0, jump = p.z - ground;
+  const eye = [p.x - fx * CAM_DIST, CAM_H + ground + jump * 0.6, p.y - fz * CAM_DIST];
+  const target = [p.x + fx * 90, 12 + ground + jump * 0.8, p.y + fz * 90];
   const fovH = (FOV_DEG + Math.min(9, Math.abs(p.speed) * 0.6)) * Math.PI / 180; // más velocidad, más campo
   const tanY = Math.min(Math.tan(fovH / 2) / aspect, Math.tan(0.6));
   const VP = mat4Mul(perspective(2 * Math.atan(tanY), aspect, 4, 16000), lookAt(eye, target, UP));

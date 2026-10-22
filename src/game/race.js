@@ -1,10 +1,10 @@
 // Reglas de la carrera: actualización de cada fotograma, vueltas, posiciones, llegada,
 // placas de turbo, atajos y caídas al agua.
 import { LAPS, TRACK_WIDTH } from '../config.js';
-import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt } from './track.js';
+import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad } from './track.js';
 import { game, setState } from './state.js';
 import { owned } from './cars.js';
-import { physics, collideCars } from './physics.js';
+import { physics, updateHeight, collideCars } from './physics.js';
 import { aiInput, rubberBand } from './ai.js';
 import { playerInput } from './input.js';
 import { updateBoxes, updateBananas, useItem } from './items.js';
@@ -33,8 +33,10 @@ function updateCar(c, dt) {
   if (c.sink > 0) return updateSink(c, dt);
   const mine = c.id === net.myId && c.human;
   const inp = mine && !c.done ? playerInput() : aiInput(c); // al terminar, piloto automático
-  physics(c, inp, dt);
-  updateProgress(c);
+  physics(c, inp, dt);    // moverse
+  updateProgress(c);      // en qué parte de la pista está
+  keepOnRoad(c);          // muros de los tramos elevados
+  updateHeight(c, dt);    // altura: puentes, rampas, saltos
   if (!c.human && c.item && Math.random() < 0.006 * dt) useItem(c);
 }
 
@@ -42,15 +44,16 @@ function updateCar(c, dt) {
 function updateProgress(c) {
   let { i, d, lost } = nearestSeg(c.x, c.y, c.seg);
   const shortcut = shortcutAt(c.x, c.y);
-  c.onShortcut = shortcut >= 0;
-  if (c.onShortcut) { i = shortcut; d = 0; } // en el atajo se avanza como si fuera por la pista
+  c.onShortcut = !!shortcut;
+  if (shortcut) { i = shortcut.seg; d = 0; c.shortcutSpeed = shortcut.speed; } // se avanza como si fuera por la pista
   // si se había perdido (lost), se recoloca sin contar vuelta
   if (!lost && i < c.seg - track.N / 2) c.lap++;
   else if (!lost && i > c.seg + track.N / 2) c.lap--;
   c.seg = i;
+  c.trackDist = d;
   c.offTrack = d > TRACK_WIDTH / 2;
   if (c.air === 0) {
-    if (onBoostPad(c.x, c.y)) c.boost = Math.max(c.boost, PAD_BOOST);
+    if (onBoostPad(c)) c.boost = Math.max(c.boost, PAD_BOOST);
     if (isWater(c.x, c.y, i, d)) { c.sink = SINK_TIME; c.boost = 0; }
   }
   if (c.lap >= LAPS && !c.done) {
@@ -75,7 +78,8 @@ function respawn(c) {
   const range = waterRangeAt(c.seg);
   const seg = (range && range.type === 'cove' ? range.to + 3 : c.seg) % track.N;
   const p = pointAt(seg, 0);
-  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: 0, vz: 0, air: 0, pitch: 0, sink: 0 });
+  const h = track.points[seg].h;
+  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: h, ground: h, vz: 0, air: 0, pitch: 0, sink: 0 });
 }
 
 function updateFinish() {

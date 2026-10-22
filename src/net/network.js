@@ -101,7 +101,7 @@ const handlers = {
   world: m => { if (net.inRace && !isHost()) applyWorld(m); },
   item: m => { if (m.id === net.myId) me().item = m.item; },
   spin: m => { if (m.id === net.myId) hitBanana(me()); },
-  banana: m => { if (isHost()) game.bananas.push({ x: m.x, y: m.y }); }
+  banana: m => { if (isHost()) game.bananas.push({ x: m.x, y: m.y, h: m.h || 0 }); }
 };
 
 // Si alguien se va en mitad de la carrera, su coche pasa a llevarlo la IA
@@ -115,7 +115,7 @@ function dropMissingPlayers() {
 function carState(c) {
   return {
     id: c.id, x: +c.x.toFixed(1), y: +c.y.toFixed(1), angle: +c.angle.toFixed(3), speed: +c.speed.toFixed(2),
-    z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)),
+    z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), ground: Math.round(c.ground), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)),
     done: c.done, item: c.item
   };
 }
@@ -123,7 +123,7 @@ function carState(c) {
 function applyRemote(c, s) {
   if (!c || owned(c)) return;
   c.net = s;
-  ['lap', 'seg', 'boost', 'spin', 'done', 'item'].forEach(k => { c[k] = s[k]; });
+  ['lap', 'seg', 'boost', 'spin', 'done', 'item', 'ground'].forEach(k => { c[k] = s[k]; });
 }
 
 function worldMsg() {
@@ -131,7 +131,7 @@ function worldMsg() {
     t: 'world', state: game.state, countdown: game.countdown,
     ai: game.cars.filter(c => !c.human).map(carState),
     boxes: game.boxes.map(b => Math.max(0, Math.round(b.t))),
-    bananas: game.bananas.map(b => [Math.round(b.x), Math.round(b.y)]),
+    bananas: game.bananas.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.h)]),
     finish: game.finishOrder.map(c => c.id)
   };
 }
@@ -141,7 +141,7 @@ function applyWorld(m) {
   game.countdown = m.countdown;
   m.ai.forEach(s => applyRemote(game.cars[s.id], s));
   game.boxes.forEach((b, i) => { b.t = m.boxes[i]; });
-  game.bananas = m.bananas.map(([x, y]) => ({ x, y }));
+  game.bananas = m.bananas.map(([x, y, h]) => ({ x, y, h: h || 0 }));
   game.finishOrder = m.finish.map(id => game.cars[id]);
 }
 
@@ -151,7 +151,8 @@ export function followNet(c, dt) {
   if (!n) return;
   n.x += Math.cos(n.angle) * n.speed * dt;
   n.y += Math.sin(n.angle) * n.speed * dt;
-  if (n.z > 0) { n.vz -= 0.12 * dt; n.z = Math.max(0, n.z + n.vz * dt); } // sigue cayendo si va en el aire
+  const floor = n.ground || 0;
+  if (n.z > floor) { n.vz -= 0.12 * dt; n.z = Math.max(floor, n.z + n.vz * dt); } // sigue cayendo si va en el aire
   if (Math.hypot(n.x - c.x, n.y - c.y) > 150) Object.assign(c, { x: n.x, y: n.y, z: n.z }); // ha reaparecido lejos
   c.x += (n.x - c.x) * 0.3;
   c.y += (n.y - c.y) * 0.3;

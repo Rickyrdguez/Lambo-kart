@@ -87,6 +87,40 @@ export const MAPS = [
       trees: { kind: 'palm', count: 150 },
       decor: { rocks: 40, umbrellas: 26, lighthouse: { seg: 70, side: -1 } }
     }
+  },
+  {
+    id: 'ciudad',
+    name: 'Ciudad Neón',
+    subtitle: 'Noche, puente, túnel y callejón',
+    mobileQuality: 0.75,
+    // Trazado en 8: se cruza en los segmentos 160 (abajo) y 440 (por el puente)
+    points: [[1600, -350], [1650, 300], [1100, 700], [450, 450], [0, 0], [-450, -450], [-1050, -700],
+             [-1600, -350], [-1650, 300], [-1100, 700], [-450, 450], [0, 0], [450, -450], [1050, -700]],
+    bridge: { from: 395, up: 425, down: 455, to: 485, height: 100 }, // sube, recto arriba, baja
+    tunnel: { from: 50, to: 100 },
+    boostPads: [20, 135, 430],                      // la última, arriba del puente
+    boxes: [0.12, 0.5, 0.8],
+    shortcuts: [{ from: 296, to: 386, width: 70, speed: 0.95, style: 'alley' }], // callejón: ahorra ~480 unidades
+    theme: {
+      preview: '#141a2e',
+      night: true,
+      sun: norm3([-0.35, 0.14, 0.6]),               // la luna hace de "sol" (baja, para que se vea)
+      sunCol: [0.45, 0.55, 0.8],
+      disc: 600,                                    // disco grande (luna)
+      stars: 1,
+      ambient: 0.35,                                // luz ambiente baja: es de noche
+      horizon: [0.03, 0.045, 0.1],
+      zenith: [0.005, 0.008, 0.03],
+      clouds: 0.9,
+      fog: 0.00014,
+      ground: [[0.05, 0.05, 0.06], [0.08, 0.08, 0.09], [0.035, 0.035, 0.045]], // cemento
+      asphalt: '#2c2d33',
+      curbs: ['#26262e', '#d6249f'],
+      lines: '#3fd2ff',                             // bordes brillantes para ver bien la pista
+      skyline: true,                                // edificios lejanos en vez de montañas
+      trees: { kind: 'pine', count: 0 },
+      decor: { buildings: 110, lamps: 7 }           // edificios y una farola cada 7 segmentos
+    }
   }
 ];
 

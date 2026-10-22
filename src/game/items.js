@@ -16,7 +16,7 @@ export function makeBoxes() {
     const seg = Math.floor(track.N * f);
     BOX_LANES.forEach(lane => {
       const p = pointAt(seg, lane);
-      game.boxes.push({ x: p.x, y: p.y, t: 0 });
+      game.boxes.push({ x: p.x, y: p.y, h: track.points[seg].h, t: 0 }); // h: altura de la pista (puentes)
     });
   });
 }
@@ -24,7 +24,7 @@ export function makeBoxes() {
 export function updateBoxes(dt) {
   game.boxes.forEach(b => {
     if (b.t > 0) { b.t -= dt; return; }
-    const c = game.cars.find(c => dist(b, c) < 32 && c.z < 35); // las cajas flotan a media altura
+    const c = game.cars.find(c => dist(b, c) < 32 && Math.abs(c.z - b.h) < 35); // flotan a media altura
     if (!c) return;
     b.t = BOX_RESPAWN;
     if (c.item) return;
@@ -36,9 +36,9 @@ export function updateBoxes(dt) {
 export function useItem(c) {
   if (c.item === 'turbo') c.boost = TURBO_TIME;
   if (c.item === 'banana') {
-    const b = { x: c.x - Math.cos(c.angle) * 45, y: c.y - Math.sin(c.angle) * 45 };
+    const b = { x: c.x - Math.cos(c.angle) * 45, y: c.y - Math.sin(c.angle) * 45, h: c.ground };
     if (isHost()) game.bananas.push(b);
-    else send({ t: 'banana', x: b.x, y: b.y });
+    else send({ t: 'banana', x: b.x, y: b.y, h: b.h });
   }
   c.item = null;
 }
@@ -50,7 +50,8 @@ export function hitBanana(c) {
 
 export function updateBananas() {
   for (let i = game.bananas.length - 1; i >= 0; i--) {
-    const hit = game.cars.find(c => dist(game.bananas[i], c) < 26 && c.z < 6); // en el aire no se pisan
+    const b = game.bananas[i];
+    const hit = game.cars.find(c => dist(b, c) < 26 && Math.abs(c.z - b.h) < 6); // en el aire no se pisan
     if (!hit) continue;
     if (owned(hit)) hitBanana(hit);
     else send({ t: 'spin', id: hit.id });

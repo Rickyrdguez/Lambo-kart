@@ -109,6 +109,14 @@ export function buildFlame(len) {
   return g;
 }
 
+// Cono de luz de los faros sobre el suelo (uv.x = distancia al coche, uv.y = de lado a lado)
+export function buildHeadlights() {
+  const g = [], y = 0.8;
+  quadN(g, [[34, y, -14], [34, y, 14], [230, y, 80], [230, y, -80]], [UP, UP, UP, UP],
+        [1, 0.93, 0.75], M.HEADLIGHT, [[0, 0], [0, 1], [1, 1], [1, 0]]);
+  return g;
+}
+
 // Sombra suave de contacto bajo cada coche
 export function buildBlob() {
   const g = [];
