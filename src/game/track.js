@@ -50,7 +50,7 @@ export function computeBounds(pts) {
 
 export function buildTrack(map) {
   const pts = splinePoints(map.points);
-  pts.forEach((p, i) => { p.h = bridgeHeight(map.bridge, i); });
+  pts.forEach((p, i) => { p.h = bridgeHeight(map.bridge, i) - tunnelDepth(map.tunnel, i); });
   Object.assign(track, { map, points: pts, N: pts.length, bounds: computeBounds(pts), tunnel: map.tunnel || null });
   track.ramps = (map.ramps || []).map(seg => zone(seg, RAMP_LEN, { h: RAMP_HEIGHT }));
   track.pads = (map.boostPads || []).map(seg => zone(seg, PAD_LEN, { h: pts[seg].h }));
@@ -89,14 +89,23 @@ function searchSegs(x, y, from, k0, k1) {
   return { i: best, d: Math.sqrt(bd) };
 }
 
-// ================== Altura de la pista (puentes) ==================
+// ================== Altura de la pista (puentes y túneles) ==================
+const smooth = t => t * t * (3 - 2 * t);
+
 // El puente sube suavemente, sigue recto arriba y vuelve a bajar
 function bridgeHeight(b, i) {
   if (!b || i < b.from || i > b.to) return 0;
-  const smooth = t => t * t * (3 - 2 * t);
   if (i < b.up) return b.height * smooth((i - b.from) / (b.up - b.from));
   if (i > b.down) return b.height * smooth((b.to - i) / (b.to - b.down));
   return b.height;
+}
+
+// El túnel es lo contrario: la pista baja por una trinchera, va bajo tierra y vuelve a subir
+function tunnelDepth(t, i) {
+  if (!t || i < t.from || i > t.to) return 0;
+  if (i < t.down) return t.depth * smooth((i - t.from) / (t.down - t.from));
+  if (i > t.up) return t.depth * smooth((t.to - i) / (t.to - t.up));
+  return t.depth;
 }
 
 // Altura de la calzada en (x, y) para un coche en el segmento seg (interpola entre puntos)
@@ -115,11 +124,11 @@ export function groundAt(c) {
   return road + (ramp ? ramp.h : 0);
 }
 
-// En los tramos elevados hay muros: si el coche llega al borde, se le devuelve a la calzada
-// y se le endereza un poco, como si rozara el muro.
+// En los tramos elevados (puente) o hundidos (trinchera y túnel) hay muros: si el coche llega
+// al borde, se le devuelve a la calzada y se le endereza un poco, como si rozara el muro.
 export function keepOnRoad(c) {
   const p = track.points[c.seg];
-  if (p.h < 1 || c.z < p.h - 20) return;
+  if (Math.abs(p.h) < 1 || c.z < p.h - 20) return;
   const nx = -Math.sin(p.a), ny = Math.cos(p.a), side = (c.x - p.x) * nx + (c.y - p.y) * ny;
   if (Math.abs(side) <= WALL) return;
   const push = Math.sign(side) * WALL - side;
@@ -130,7 +139,12 @@ export function keepOnRoad(c) {
   c.speed *= 0.98;
 }
 
-export const inTunnel = seg => !!track.tunnel && seg >= track.tunnel.from && seg <= track.tunnel.to;
+// Trinchera completa (de donde empieza a bajar a donde termina de subir) y parte cubierta
+export const inTrench = seg => !!track.tunnel && seg >= track.tunnel.from && seg <= track.tunnel.to;
+export const inTunnel = seg => !!track.tunnel && seg >= track.tunnel.down && seg <= track.tunnel.up;
+
+// Parque encima del túnel: segmentos cubiertos y hasta esta distancia del centro de la pista
+export const PARK_WIDTH = TRACK_WIDTH / 2 + 230;
 
 // ================== Rampas y placas de turbo ==================
 // Zona rectangular sobre la pista que empieza en el segmento seg y mide len de largo
@@ -281,8 +295,10 @@ function placeBuildings(out, count) {
   const placed = [];
   scatter(count, 60, (x, y) => {
     const hw = 50 + Math.random() * 60, hd = 50 + Math.random() * 60, r = Math.max(hw, hd) * 1.25;
-    const { p, d } = nearestPoint(x, y);
+    const { p, d } = nearestPoint(x, y), seg = track.points.indexOf(p);
     if (d < TRACK_WIDTH / 2 + 40 + r || nearShortcut(x, y, r + 15)) return false;
+    if (inTunnel(seg) && d < PARK_WIDTH + r) return false; // ni en el parque
+    if (inTrench(seg) && d < TRACK_WIDTH / 2 + 130 + r) return false; // ni en las aceras de la trinchera
     if (placed.some(o => Math.hypot(o.x - x, o.y - y) < o.r + r + 15)) return false;
     const b = {
       type: 'building', x, y, r, hw, hd, h: 120 + Math.random() * 360,
@@ -294,9 +310,9 @@ function placeBuildings(out, count) {
   });
 }
 
-// Farolas a lo largo de la pista, alternando lados (en el túnel hay luces en el techo)
+// Farolas a lo largo de la pista, alternando lados (en la trinchera y el túnel hay otras luces)
 function placeLamps(out, every) {
   for (let i = 0, k = 0; i < track.N; i += every, k++) {
-    if (!inTunnel(i)) out.push({ type: 'lamp', seg: i, side: k % 2 ? 1 : -1 });
+    if (!inTrench(i)) out.push({ type: 'lamp', seg: i, side: k % 2 ? 1 : -1 });
   }
 }

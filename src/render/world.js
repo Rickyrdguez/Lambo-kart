@@ -4,14 +4,16 @@
 import { TRACK_WIDTH as W } from '../config.js';
 import { UP, rgb, norm3 } from '../core/math.js';
 import { modelMatrix } from '../core/mat4.js';
-import { track, pointAt, waterRangeAt, inTunnel } from '../game/track.js';
+import { track, pointAt, waterRangeAt, inTunnel, inTrench, PARK_WIDTH } from '../game/track.js';
 import { M, vtx, tri, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
 
 const theme = () => track.map.theme;
 const UP4 = [UP, UP, UP, UP];
 const SEA_LEVEL = -3;
-const TUNNEL_H = 115;  // altura del techo del túnel (por encima de la cámara, que va a 70)
 const DECK = 8;        // grosor del tablero del puente
+const TRENCH_WALL = W / 2 + 18;  // muros de la trinchera (distancia al centro de la pista)
+const SIDEWALK = 160;            // aceras a nivel de calle junto a la trinchera
+const TILE = 80;                 // baldosas del suelo cuando hay que hacerle un agujero
 const elevated = i => track.points[i % track.N].h > 1;
 
 // Suelo, mar, montañas y pista (no proyectan sombra)
@@ -33,7 +35,7 @@ export function buildProps() {
   track.shortcuts.forEach(s => buildShortcut(g, s));
   track.water.filter(r => r.type === 'pier').forEach(r => buildPierPosts(g, r));
   buildBridge(g);
-  if (track.tunnel) buildTunnel(g, track.tunnel);
+  if (track.tunnel) { buildTrench(g, track.tunnel); buildPark(g, track.tunnel); }
   return g;
 }
 
@@ -184,9 +186,29 @@ function buildArch(g, a) {
 
 // ================== Entorno ==================
 function buildGround(g) {
+  if (track.tunnel) return buildGroundWithHole(g);
   const [cx, cz] = center(), s = 16000;
-  quadN(g, [[cx - s, 0, cz - s], [cx + s, 0, cz - s], [cx + s, 0, cz + s], [cx - s, 0, cz + s]],
-        UP4, [1, 1, 1], M.GRASS);
+  groundQuad(g, cx - s, cx + s, cz - s, cz + s);
+}
+
+function groundQuad(g, x0, x1, z0, z1) {
+  quadN(g, [[x0, 0, z0], [x1, 0, z0], [x1, 0, z1], [x0, 0, z1]], UP4, [1, 1, 1], M.GRASS);
+}
+
+// Suelo en baldosas con un agujero donde la pista baja a la trinchera. Los bordes dentados
+// del agujero quedan tapados por las aceras (buildTrench).
+function buildGroundWithHole(g) {
+  const b = track.bounds, m = 1400, s = 16000, [cx, cz] = center();
+  const x0 = b.x0 - m, x1 = b.x1 + m, z0 = b.y0 - m, z1 = b.y1 + m;
+  [[cx - s, x0, cz - s, cz + s], [x1, cx + s, cz - s, cz + s], [x0, x1, cz - s, z0], [x0, x1, z1, cz + s]]
+    .forEach(([a, b2, c, d]) => groundQuad(g, a, b2, c, d)); // marco exterior
+  const trench = track.points.filter((p, i) => inTrench(i)), reach = TRENCH_WALL + TILE * 0.72;
+  for (let x = x0; x < x1; x += TILE) {
+    for (let z = z0; z < z1; z += TILE) {
+      const mx = x + TILE / 2, mz = z + TILE / 2;
+      if (!trench.some(p => Math.hypot(p.x - mx, p.y - mz) < reach)) groundQuad(g, x, x + TILE, z, z + TILE);
+    }
+  }
 }
 
 // Isla: mar alrededor y una franja de arena a cada lado de la pista, con orilla en pendiente
@@ -391,21 +413,89 @@ function nearOtherRoad(x, y, seg) {
   return track.points.some((p, j) => Math.abs(j - seg) > 60 && !elevated(j) && Math.hypot(p.x - x, p.y - y) < W / 2 + 40);
 }
 
-// Túnel: paredes y techo con tiras de luz
-function buildTunnel(g, t) {
-  const L = W / 2 + 22;
+// ================== Túnel bajo tierra ==================
+// Punto a una altura FIJA del mundo (no relativa a la calzada): segmento i + fracción f, lateral o
+function P3(i, f, o, y) {
+  const a = pointAt(i, o), b = pointAt(i + 1, o);
+  return [a.x + (b.x - a.x) * f, y, a.y + (b.y - a.y) * f];
+}
+
+function flatStrip(g, i, o1, o2, y, color, mat, ny = 1) {
+  const n = [0, ny, 0];
+  quadN(g, [P3(i, 0, o1, y), P3(i, 0, o2, y), P3(i, 1, o2, y), P3(i, 1, o1, y)], [n, n, n, n], rgb(color), mat);
+}
+
+// Muro de la trinchera: desde la calzada (hundida) hasta el nivel de la calle, mirando a la pista
+function trenchWall(g, i, o) {
+  const P = track.points, a = P[i], b = P[(i + 1) % track.N];
+  if (a.h > -0.5 && b.h > -0.5) return;
+  const s = -Math.sign(o), n = [-Math.sin(a.a) * s, 0, Math.cos(a.a) * s];
+  quadN(g, [P3(i, 0, o, a.h), P3(i, 1, o, b.h), P3(i, 1, o, 0.12), P3(i, 0, o, 0.12)], [n, n, n, n], rgb('#4a4c55'), M.MATTE);
+}
+
+// Trinchera con muros, aceras y neón; la parte central va cubierta (techo con luces)
+function buildTrench(g, t) {
   for (let i = t.from; i < t.to; i++) {
-    wallQuad(g, i, L, 0, TUNNEL_H, '#4a4c55');
-    wallQuad(g, i, -L, 0, TUNNEL_H, '#4a4c55');
-    trackStrip(g, i, 0, 1, -L - 10, L + 10, TUNNEL_H + 10, '#3a3c44', M.MATTE);           // techo por fuera
-    const roof = [T(i, 0, -L, TUNNEL_H), T(i, 0, L, TUNNEL_H), T(i, 1, L, TUNNEL_H), T(i, 1, -L, TUNNEL_H)];
-    quadN(g, roof, Array(4).fill([0, -1, 0]), rgb('#2e3038'), M.MATTE);                    // techo por dentro
-    if (i % 3 === 0) {
-      const lamp = [T(i, 0, -8, TUNNEL_H - 0.5), T(i, 0, 8, TUNNEL_H - 0.5), T(i, 0.6, 8, TUNNEL_H - 0.5), T(i, 0.6, -8, TUNNEL_H - 0.5)];
-      quadN(g, lamp, Array(4).fill([0, -1, 0]), rgb('#ffe7b0'), M.EMIT);
-    }
+    bothSides(s => {
+      trenchWall(g, i, s * TRENCH_WALL);
+      const [a, b] = sideZ(TRENCH_WALL, TRENCH_WALL + SIDEWALK, s);
+      flatStrip(g, i, a, b, 0.12, '#55565c', M.MATTE);                                           // acera
+      if (!inTunnel(i)) flatStrip(g, i, ...sideZ(TRENCH_WALL - 2, TRENCH_WALL + 2, s), 0.3, '#2be8ff', M.EMIT); // borde con neón
+    });
   }
-  [t.from, t.to].forEach(i => atSeg(g, i, l => box(l, -6, 6, 0, TUNNEL_H + 10, -L - 16, L + 16, '#55575f', M.MATTE))); // bocas
+  for (let i = t.down; i < t.up; i++) {
+    flatStrip(g, i, -TRENCH_WALL, TRENCH_WALL, -12, '#2a2c33', M.MATTE, -1);                     // techo del túnel
+    if (i % 3 === 0) flatStrip(g, i, -8, 8, -12.5, '#ffe7b0', M.EMIT, -1);                       // tiras de luz
+  }
+  [t.down, t.up].forEach(i => {                                                                    // bocas del túnel
+    const p = track.points[i], local = [];
+    box(local, -4, 4, -16, 2, -TRENCH_WALL - 6, TRENCH_WALL + 6, '#5b5d66', M.MATTE);
+    box(local, -4.6, 4.6, -15, -13, -TRENCH_WALL + 4, TRENCH_WALL - 4, '#2be8ff', M.EMIT);
+    appendTransformed(g, local, modelMatrix(p.x, p.y, p.a));
+  });
+}
+
+// Parque encima del túnel: césped, camino, árboles, bancos, farolitas y una fuente
+function buildPark(g, t) {
+  for (let i = t.down; i < t.up; i++) {
+    flatStrip(g, i, -PARK_WIDTH, PARK_WIDTH, 0.16, i % 4 < 2 ? '#2f5a2a' : '#2b5527', M.MATTE);  // césped
+    flatStrip(g, i, -14, 14, 0.2, '#7d7262', M.MATTE);                                            // camino
+  }
+  const mid = (t.down + t.up) >> 1, f = pointAt(mid, 0);
+  fountain(g, f.x, f.y);
+  for (let k = 0; k < 18; k++) {                                                                  // árboles
+    const seg = t.down + 3 + Math.floor(Math.random() * (t.up - t.down - 6));
+    const side = Math.random() < 0.5 ? -1 : 1, lane = side * (40 + Math.random() * (PARK_WIDTH - 80));
+    if (Math.abs(seg - mid) < 5 && Math.abs(lane) < 90) continue; // la fuente
+    const p = pointAt(seg, lane);
+    buildTree(g, { x: p.x, y: p.y, s: 0.7 + Math.random() * 0.4, pine: false });
+  }
+  for (let i = t.down + 4; i < t.up - 3; i += 7) {                                              // bancos y farolitas
+    bothSides(s => {
+      const p = track.points[i], local = [];
+      box(local, -10, 10, 0, 5, ...sideZ(20, 26, s), '#6b4a2e', M.MATTE);
+      box(local, -10, 10, 5, 12, ...sideZ(25, 27, s), '#6b4a2e', M.MATTE);
+      frustumY(local, 14, s * 22, 0, 30, 1.4, 1.1, '#3a3d45', M.MATTE, 6);
+      box(local, 11, 17, 30, 34, s * 22 - 3, s * 22 + 3, '#ffe2a8', M.EMIT);
+      appendTransformed(g, local, modelMatrix(p.x, p.y, p.a));
+    });
+  }
+}
+
+function fountain(g, x, z) {
+  frustumY(g, x, z, 0, 9, 48, 46, '#8d8f96', M.MATTE, 16);                     // borde
+  disc(g, x, z, 7, 46, '#ffffff', M.WATER);                                    // agua (la del mar, animada)
+  frustumY(g, x, z, 0, 28, 6, 4, '#8d8f96', M.MATTE, 8);                       // columna
+  frustumY(g, x, z, 28, 32, 4, 15, '#8d8f96', M.MATTE, 10);                    // taza
+  disc(g, x, z, 31, 14, '#ffffff', M.WATER);
+}
+
+function disc(g, x, z, y, r, color, mat, seg = 16) {
+  const c = rgb(color);
+  for (let k = 0; k < seg; k++) {
+    const a0 = k / seg * Math.PI * 2, a1 = (k + 1) / seg * Math.PI * 2;
+    tri(g, [x, y, z], [x + Math.cos(a1) * r, y, z + Math.sin(a1) * r], [x + Math.cos(a0) * r, y, z + Math.sin(a0) * r], UP, c, mat);
+  }
 }
 
 // Charcos de luz (de noche): bajo cada farola, bajo las luces del túnel y en el callejón
@@ -418,7 +508,11 @@ export function buildLights() {
     pool(p.x, p.y, track.points[l.seg].h + 0.7, 95, '#ffb35a');
   });
   if (track.tunnel) {
-    for (let i = track.tunnel.from; i < track.tunnel.to; i += 3) { const p = pointAt(i, 0); pool(p.x, p.y, 0.7, 80, '#ffd9a0'); }
+    const t = track.tunnel;
+    for (let i = t.from; i < t.to; i += 3) { const p = pointAt(i, 0); pool(p.x, p.y, track.points[i].h + 0.7, 80, '#ffd9a0'); }
+    for (let i = t.down + 4; i < t.up - 3; i += 7) {                    // farolitas del parque
+      [-1, 1].forEach(s => { const p = pointAt(i, s * 22); pool(p.x, p.y, 0.25, 45, '#ffcf8a'); });
+    }
   }
   track.shortcuts.filter(s => s.style === 'alley').forEach(s => {
     pool((s.a.x + s.b.x) / 2, (s.a.y + s.b.y) / 2, 0.7, 70, '#7fd0ff');

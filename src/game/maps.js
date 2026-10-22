@@ -97,7 +97,8 @@ export const MAPS = [
     points: [[1600, -350], [1650, 300], [1100, 700], [450, 450], [0, 0], [-450, -450], [-1050, -700],
              [-1600, -350], [-1650, 300], [-1100, 700], [-450, 450], [0, 0], [450, -450], [1050, -700]],
     bridge: { from: 395, up: 425, down: 455, to: 485, height: 100 }, // sube, recto arriba, baja
-    tunnel: { from: 50, to: 100 },
+    // la pista baja por una trinchera, pasa bajo tierra (con un parque encima) y vuelve a subir
+    tunnel: { from: 35, down: 60, up: 90, to: 115, depth: 90 },
     boostPads: [20, 135, 430],                      // la última, arriba del puente
     boxes: [0.12, 0.5, 0.8],
     shortcuts: [{ from: 296, to: 386, width: 70, speed: 0.95, style: 'alley' }], // callejón: ahorra ~480 unidades

@@ -17,7 +17,10 @@ http.createServer((req, res) => {
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('No encontrado'); }
-    res.writeHead(200, { 'Content-Type': (TYPES[path.extname(file)] || 'application/octet-stream') + '; charset=utf-8' });
+    res.writeHead(200, {
+      'Content-Type': (TYPES[path.extname(file)] || 'application/octet-stream') + '; charset=utf-8',
+      'Cache-Control': 'no-store' // en desarrollo, siempre la última versión de cada archivo
+    });
     res.end(data);
   });
 }).listen(PORT, () => console.log(`Lambo Kart en http://localhost:${PORT}`));

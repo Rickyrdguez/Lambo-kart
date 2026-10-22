@@ -58,6 +58,15 @@ El trazado es un **8**: la pista se cruza consigo misma en los segmentos 160 y 4
 - **Objetos y coches a dos alturas**: las cajas y los plátanos guardan su altura `h`; solo afectan a coches a esa altura. Dos coches a distinta altura no chocan. La altura (`z` y `ground`) se envía por red.
 - **Pilares**: se colocan bajo el puente salvo donde caerían encima de la pista de abajo.
 
+### Un túnel bajo tierra con un parque encima
+
+El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la pista baja por una **trinchera** hasta −90, pasa bajo tierra y vuelve a subir.
+
+- **Agujero en el suelo**: el suelo de la ciudad ya no es una placa única, sino una rejilla de baldosas en la que se quitan las que caen sobre la trinchera. Los bordes dentados del agujero quedan tapados por las **aceras**.
+- **Trinchera**: muros desde la calzada hasta el nivel de la calle, con un borde de neón. `keepOnRoad` también funciona aquí, igual que en el puente.
+- **Túnel**: en el tramo cubierto hay un techo bajo el nivel de la calle, con tiras de luz y charcos de luz en el asfalto.
+- **Parque**: encima, a nivel de calle, hay césped, un camino, árboles, bancos, farolitas y una fuente cuya agua usa el mismo material animado que el mar. Los edificios no se colocan sobre el parque ni sobre las aceras.
+
 ### Noche sin coste de luces dinámicas
 
 - **Luna**: hace de "sol" (luz azulada y tenue, con sombras). Su disco es más grande gracias a `uDisc`. **Estrellas**: en el shader del cielo, la dirección de la mirada se divide en una rejilla y unas pocas celdas al azar se encienden. Es muy barato.
