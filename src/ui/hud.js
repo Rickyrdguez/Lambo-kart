@@ -5,7 +5,7 @@ import { game } from '../game/state.js';
 import { me } from '../game/cars.js';
 import { ranking } from '../game/race.js';
 import { track } from '../game/track.js';
-import { isHost } from '../net/network.js';
+import { net, isHost } from '../net/network.js';
 import { projectToScreen } from '../render/camera.js';
 
 export const hudCanvas = document.getElementById('hud');
@@ -145,6 +145,7 @@ function drawResults(cy) {
   bigText(pos === 1 ? '¡HAS GANADO!' : `Has quedado ${ordinal(pos)}`, top - 70, 64, me().color);
   order.forEach((c, i) => bigText(`${ordinal(i + 1)}  ${c.name}`, top + i * gap, size, c.color));
   if (IS_TOUCH) { if (!isHost()) bigText('Esperando al anfitrión...', bottom, 22, '#4caf50'); return; } // hay botones
-  const hint = isHost() ? 'ENTER: otra carrera  ·  ESC: salir al menú' : 'Esperando al anfitrión...  ·  ESC: salir';
+  const hint = !net.online ? 'ENTER: otra carrera  ·  ESC: elegir circuito'
+    : isHost() ? 'ENTER: otra carrera  ·  ESC: volver a la sala' : 'Esperando al anfitrión...  ·  ESC: salir';
   bigText(hint, bottom, 26, '#4caf50');
 }

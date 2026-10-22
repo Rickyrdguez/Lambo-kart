@@ -88,7 +88,7 @@ function drawIslandPreview(ctx, map, pts, px, py, s) {
   });
 }
 
-function showMapPicker() {
+export function showMapPicker() {
   renderMapCards($('map-list'), session.mapChoice, id => { session.mapChoice = id; hostStart(); });
   showScreen('scr-maps');
 }

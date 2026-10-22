@@ -184,6 +184,7 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 | `hello` | jugador → servidor | Nombre del jugador |
 | `map` | anfitrión → todos | Circuito elegido en la sala (o aleatorio) |
 | `start` | anfitrión → todos | Empieza la carrera, con el circuito ya sorteado |
+| `tolobby` | anfitrión → todos | Volver a la sala de espera sin desconectarse (para cambiar de circuito) |
 | `car` | cada jugador → todos | Posición, altura (y la del suelo), velocidad, vuelta y objeto de su coche |
 | `world` | anfitrión → todos | Estado, IA, cajas, plátanos y llegada |
 | `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / has pisado un plátano |

@@ -10,13 +10,13 @@
 //  - El anfitrión simula la IA, las cajas, los plátanos y la llegada, y envía el mundo ~15 veces/s.
 //
 // Mensajes del servidor: welcome, lobby, taken, noroom, full, closed.
-// Mensajes entre jugadores: hello, map, start, car, world, item, spin, banana.
+// Mensajes entre jugadores: hello, map, start, tolobby, car, world, item, spin, banana.
 import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS, DEFAULT_ROOM, MIN_PLAYERS, MAX_PLAYERS } from '../config.js';
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
 import { me, owned, carById } from '../game/cars.js';
 import { hitBanana } from '../game/items.js';
-import { startRace, showMenuScene, session } from '../game/session.js';
+import { startRace, showMenuScene, returnToLobby, session } from '../game/session.js';
 import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin letras que se confunden (O/0, I/1)
@@ -88,6 +88,13 @@ export function leaveGame(msg = '') {
   setStatus(msg, !!msg);
 }
 
+// El anfitrión lleva a todos de vuelta a la sala de espera, sin cerrar la partida
+export function backToLobby() {
+  if (!isHost()) return;
+  send({ t: 'tolobby' });
+  returnToLobby();
+}
+
 // El anfitrión cambia cuántos jugadores caben en la sala (el servidor no deja bajar de los que ya hay)
 export function setRoomSize(n) {
   if (!isHost()) return;
@@ -108,6 +115,7 @@ const handlers = {
   },
   map: m => { if (!isHost()) { session.mapChoice = m.choice; renderLobby(); } },
   start: m => startRace(m.humans, m.map),
+  tolobby: () => { if (!isHost()) returnToLobby(); },
   car: m => { if (net.inRace) applyRemote(carById(m.id), m.s); },
   world: m => { if (net.inRace && !isHost()) applyWorld(m); },
   item: m => { if (m.id === net.myId) me().item = m.item; },

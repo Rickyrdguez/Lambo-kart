@@ -7,7 +7,7 @@ import { snapCamera } from '../render/camera.js';
 import { loadWorld } from '../render/renderer.js';
 import { setMapQuality } from '../render/quality.js';
 import { net, send } from '../net/network.js';
-import { hideUI, playerName } from '../ui/menu.js';
+import { hideUI, playerName, showLobby } from '../ui/menu.js';
 
 // mapChoice: id de un circuito o 'random'. En multijugador lo elige el anfitrión.
 export const session = { mapChoice: RANDOM_MAP };
@@ -37,6 +37,13 @@ export function hostStart() {
   const map = resolveMap(session.mapChoice);
   send({ t: 'start', humans, map });
   startRace(humans, map);
+}
+
+// Termina la carrera y vuelve a la sala de espera (online) sin desconectarse: el grupo sigue junto
+export function returnToLobby() {
+  net.inRace = false;
+  showMenuScene();
+  showLobby();
 }
 
 // Escena de fondo del menú (en el último circuito cargado)

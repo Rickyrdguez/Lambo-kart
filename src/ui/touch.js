@@ -9,7 +9,7 @@ import { IS_TOUCH } from '../config.js';
 import { keys } from '../game/input.js';
 import { game } from '../game/state.js';
 import { me } from '../game/cars.js';
-import { isHost } from '../net/network.js';
+import { net, isHost } from '../net/network.js';
 
 const $ = id => document.getElementById(id);
 const DRIVE = [['t-left', 'ArrowLeft'], ['t-right', 'ArrowRight'], ['t-up', 'ArrowUp'], ['t-down', 'ArrowDown']];
@@ -68,6 +68,8 @@ export function updateTouch() {
   $('t-pad').classList.toggle('hidden', done);
   $('t-end').classList.toggle('hidden', !done);
   $('t-again').classList.toggle('hidden', !isHost());
+  const back = !net.online ? 'Elegir circuito' : isHost() ? 'Volver a la sala' : 'Salir';
+  if ($('t-menu').textContent !== back) $('t-menu').textContent = back;
   if (done || !racing) DRIVE.forEach(([, code]) => { keys[code] = false; });
   const icon = ITEM_ICONS[item] || '';
   if ($('t-item').textContent !== icon) $('t-item').textContent = icon;
