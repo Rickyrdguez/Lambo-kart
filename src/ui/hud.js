@@ -99,7 +99,7 @@ function drawItemSlot(p) {
 }
 
 function drawMinimap() {
-  const b = track.bounds, size = IS_TOUCH ? 120 : 180, pad = IS_TOUCH ? 6 : 10;
+  const b = track.bounds, size = IS_TOUCH ? 110 : 180, pad = IS_TOUCH ? 6 : 10;
   const s = size / Math.max(b.x1 - b.x0, b.y1 - b.y0), h = (b.y1 - b.y0) * s;
   // en móvil, arriba a la derecha (abajo están los botones)
   const ox = hudCanvas.width - size - pad * 2, oy = IS_TOUCH ? pad : hudCanvas.height - h - pad * 3;

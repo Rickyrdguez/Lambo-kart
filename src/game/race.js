@@ -40,12 +40,13 @@ function updateCar(c, dt) {
 
 // Cuenta una vuelta cuando el segmento salta del final al principio de la pista
 function updateProgress(c) {
-  let { i, d } = nearestSeg(c.x, c.y, c.seg);
+  let { i, d, lost } = nearestSeg(c.x, c.y, c.seg);
   const shortcut = shortcutAt(c.x, c.y);
   c.onShortcut = shortcut >= 0;
   if (c.onShortcut) { i = shortcut; d = 0; } // en el atajo se avanza como si fuera por la pista
-  if (i < c.seg - track.N / 2) c.lap++;
-  else if (i > c.seg + track.N / 2) c.lap--;
+  // si se había perdido (lost), se recoloca sin contar vuelta
+  if (!lost && i < c.seg - track.N / 2) c.lap++;
+  else if (!lost && i > c.seg + track.N / 2) c.lap--;
   c.seg = i;
   c.offTrack = d > TRACK_WIDTH / 2;
   if (c.air === 0) {

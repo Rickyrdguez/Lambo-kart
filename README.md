@@ -75,7 +75,7 @@
 | `Esc` | Salir al menú |
 | `Enter` | Otra carrera (anfitrión, al terminar) |
 
-En el **móvil** (en horizontal): ◀ ▶ abajo a la izquierda para girar, ▲ ▼ abajo a la derecha para acelerar y frenar, y el botón de objeto a media altura a la izquierda.
+En el **móvil** (en horizontal): ◀ ▶ abajo a la izquierda para girar (se puede deslizar el pulgar de uno a otro), pedales abajo a la derecha (▲ acelerar, ▼ frenar) y el botón de objeto encima de ◀ ▶. En iPhone, para jugar a pantalla completa: **Compartir → Añadir a pantalla de inicio**.
 
 ## 👥 Jugar con amigos
 

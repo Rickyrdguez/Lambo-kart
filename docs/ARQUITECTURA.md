@@ -49,10 +49,19 @@ Los circuitos con `island` en su definición no tienen un suelo infinito: tienen
 ## Móvil ([`ui/touch.js`](../src/ui/touch.js))
 
 - Se detecta una pantalla táctil con `matchMedia('(pointer: coarse)')`. Solo entonces se muestran los botones y se añade la clase `touch` al `<body>`.
-- Cada botón de dirección marca la misma tecla que el teclado mientras se mantiene pulsado. Usa *pointer events* con `setPointerCapture`, así funcionan **varios dedos a la vez** y el botón se suelta aunque el dedo se salga de él.
-- El botón de objeto, "Otra carrera" y ✕ llaman a la misma función que las teclas Espacio, Enter y Esc.
-- Gráficos más ligeros en móvil: resolución 1x y mapa de sombras de 1024 en vez de 2048.
-- En vertical aparece un aviso para girar el móvil. Al empezar a jugar se pide pantalla completa en horizontal.
+- **Conducción**: en cada evento táctil (`touchstart`, `touchmove`, `touchend`, `touchcancel`) se recorre la lista de **todos los dedos** y se mira qué botón tiene cada uno debajo, con un margen generoso. Con eso se marcan las mismas teclas que con el teclado. Ventajas:
+  - Funcionan varios dedos a la vez.
+  - Se puede deslizar el pulgar de ◀ a ▶ sin levantarlo.
+  - No depende de que el navegador avise de cada pulsación. iOS a veces cancelaba el dedo del acelerador al poner un segundo dedo, porque lo confundía con un gesto de zoom.
+- **Sin zoom ni gestos**: se bloquean los gestos de iOS (`gesturestart`) y se usa `touch-action: none` en la zona de juego.
+- **Botones**: el objeto, "Otra carrera" y ✕ llaman a la misma función que las teclas Espacio, Enter y Esc. Los tamaños se adaptan al alto de la pantalla (`clamp(...vh...)`).
+- **Gráficos más ligeros en móvil**: resolución 1x y mapa de sombras de 1024 en vez de 2048.
+- **Pantalla**: en vertical aparece un aviso para girar el móvil. Al empezar a jugar se pide pantalla completa en horizontal. En iPhone, el `manifest.webmanifest` hace que, al añadirlo a la pantalla de inicio, se abra a pantalla completa.
+
+## Calidad gráfica automática ([`render/quality.js`](../src/render/quality.js))
+
+- **Resolución adaptativa**: se mide el tiempo entre fotogramas. Si va lento (más de 22 ms de media), se baja la resolución de dibujo un 10 %, hasta un mínimo del 40 %. Si va sobrado, se vuelve a subir. Los menús y el marcador mantienen siempre su nitidez porque van en otra capa.
+- **Detección de dibujo por software**: si el navegador no está usando la tarjeta gráfica (por ejemplo, *Microsoft Basic Render Driver* o *SwiftShader*), se empieza a media resolución y el menú avisa de cómo activar la aceleración por hardware.
 
 ## Rampas y saltos
 

@@ -59,10 +59,19 @@ export function pointAt(seg, lane) {
   return { x: p.x - Math.sin(p.a) * lane, y: p.y + Math.cos(p.a) * lane };
 }
 
-// Busca el punto de la pista más cercano, empezando desde el último conocido
+// Busca el punto de la pista más cercano, empezando desde el último conocido.
+// Si el coche se ha alejado mucho, busca más lejos; si aun así no lo encuentra, en toda la
+// pista (lost = true: en ese caso no se cuentan vueltas con ese salto).
 export function nearestSeg(x, y, from) {
+  let r = searchSegs(x, y, from, -10, 30);
+  if (r.d > TRACK_WIDTH) r = searchSegs(x, y, from, -60, 150);
+  if (r.d > TRACK_WIDTH * 3) return { ...searchSegs(x, y, 0, 0, track.N - 1), lost: true };
+  return r;
+}
+
+function searchSegs(x, y, from, k0, k1) {
   let best = from, bd = Infinity;
-  for (let k = -10; k <= 30; k++) {
+  for (let k = k0; k <= k1; k++) {
     const i = (from + k + track.N) % track.N, p = track.points[i];
     const d = (p.x - x) ** 2 + (p.y - y) ** 2;
     if (d < bd) { bd = d; best = i; }
