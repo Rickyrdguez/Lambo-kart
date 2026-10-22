@@ -4,6 +4,7 @@ import { MAPS, RANDOM_MAP } from '../game/maps.js';
 import { splinePoints, computeBounds } from '../game/track.js';
 import { hostStart, session } from '../game/session.js';
 import { net, isHost, createGame, joinGame, leaveGame, shareMapChoice } from '../net/network.js';
+import { goFullscreen } from './touch.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['scr-main', 'scr-maps', 'scr-join', 'scr-lobby'];
@@ -64,6 +65,7 @@ function mapPreview(id) {
   const s = Math.min((w - 24) / (b.x1 - b.x0), (h - 20) / (b.y1 - b.y0));
   const px = x => (w - (b.x1 - b.x0) * s) / 2 + (x - b.x0) * s, py = y => (h - (b.y1 - b.y0) * s) / 2 + (y - b.y0) * s;
   ctx.fillStyle = map.theme.preview; ctx.fillRect(0, 0, w, h);
+  if (map.island) drawIslandPreview(ctx, map, pts, px, py, s);
   ctx.beginPath();
   pts.forEach((p, i) => i ? ctx.lineTo(px(p.x), py(p.y)) : ctx.moveTo(px(p.x), py(p.y)));
   ctx.closePath();
@@ -73,6 +75,17 @@ function mapPreview(id) {
   ctx.fillStyle = '#ffc400';
   map.ramps.forEach(seg => { ctx.beginPath(); ctx.arc(px(pts[seg].x), py(pts[seg].y), 4, 0, Math.PI * 2); ctx.fill(); });
   return cv;
+}
+
+// En las islas, la arena alrededor de la pista (sin los tramos de agua)
+function drawIslandPreview(ctx, map, pts, px, py, s) {
+  const inWater = i => map.island.water.some(r => i >= r.from && i <= r.to);
+  ctx.strokeStyle = '#e3c27f'; ctx.lineWidth = map.island.radius * 2 * s; ctx.lineCap = 'butt';
+  pts.forEach((p, i) => {
+    if (inWater(i)) return;
+    const q = pts[(i + 1) % pts.length];
+    ctx.beginPath(); ctx.moveTo(px(p.x), py(p.y)); ctx.lineTo(px(q.x), py(q.y)); ctx.stroke();
+  });
 }
 
 function showMapPicker() {
@@ -138,10 +151,10 @@ function saveName() {
 export function initMenu() {
   try { $('name').value = localStorage.getItem('lamboName') || ''; } catch {}
   $('name').addEventListener('change', saveName);
-  $('btn-solo').onclick = () => { saveName(); setStatus(''); showMapPicker(); };
-  $('btn-create').onclick = () => { saveName(); createGame(); };
+  $('btn-solo').onclick = () => { saveName(); goFullscreen(); setStatus(''); showMapPicker(); };
+  $('btn-create').onclick = () => { saveName(); goFullscreen(); createGame(); };
   $('btn-join').onclick = () => { setStatus(''); showScreen('scr-join'); $('code').focus(); };
-  $('btn-join-go').onclick = () => { saveName(); joinGame($('code').value); };
+  $('btn-join-go').onclick = () => { saveName(); goFullscreen(); joinGame($('code').value); };
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join-go').click(); });
   $('btn-start').onclick = () => hostStart();
   $('btn-copy-link').onclick = e => copyText(shareLink(), e.target);

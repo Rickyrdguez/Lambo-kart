@@ -58,5 +58,47 @@ button.ghost { background: transparent; color: #aaa; font-weight: 600; padding: 
 .maps.small .map-card strong { font-size: 12px; text-align: center; }
 #lobby-map { font-weight: 600; color: #fff; }
 
+/* ---- Controles táctiles (solo con body.touch) ---- */
+#touch { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+#touch button { pointer-events: auto; }
+.tbtn { width: 76px; height: 76px; padding: 0; border-radius: 50%; font-size: 28px; color: #fff;
+        background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.45); backdrop-filter: blur(4px);
+        touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tbtn:hover { background: rgba(255,255,255,.16); }
+.tbtn.on { background: rgba(255,180,0,.55); border-color: #ffb400; }
+.tgroup { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 14px; }
+.tgroup.left { left: calc(18px + env(safe-area-inset-left)); }
+.tgroup.right { right: calc(18px + env(safe-area-inset-right)); flex-direction: column; gap: 12px; }
+.tbtn.item { position: absolute; left: calc(30px + env(safe-area-inset-left)); top: 50%; transform: translateY(-50%);
+             width: 84px; height: 84px; font-size: 38px; }
+.tbtn.item.ready { background: rgba(255,180,0,.35); border-color: #ffb400; }
+.tbtn.small { position: absolute; top: 112px; left: 10px; width: 44px; height: 44px; font-size: 18px; }
+#t-end { position: absolute; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+         display: flex; gap: 12px; pointer-events: none; }
+#t-end button { padding: 14px 22px; }
+
+.touch-hint, body.touch .keys-hint { display: none; }
+body.touch .touch-hint { display: block; }
+
+/* Aviso para girar el móvil */
+#rotate { display: none; position: fixed; inset: 0; z-index: 20; background: #14161c; color: #fff;
+          flex-direction: column; align-items: center; justify-content: center; gap: 12px; font-weight: 600; }
+#rotate span { font-size: 64px; animation: girar 1.6s ease-in-out infinite; }
+@keyframes girar { 50% { transform: rotate(-90deg); } }
+@media (orientation: portrait) { body.touch #rotate { display: flex; } }
+
+/* Menú en pantallas muy bajas (móvil en horizontal) */
+#ui { overflow-y: auto; justify-content: safe center; }
+@media (max-height: 520px) {
+  h1 { font-size: 30px; }
+  #ui { gap: 8px; padding: 10px; }
+  .card { padding: 12px 14px; gap: 8px; }
+  button { padding: 10px; font-size: 15px; }
+  input { padding: 8px 12px; font-size: 16px; }
+  .code-big { font-size: 30px; letter-spacing: 6px; }
+  .maps { grid-template-columns: repeat(4, 1fr); }
+  .map-card small { display: none; }
+}
+
 #status { min-height: 20px; margin: 0; font-weight: 600; text-align: center; color: #ddd; }
 #status.error { color: #ff8a80; }

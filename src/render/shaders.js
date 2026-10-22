@@ -100,6 +100,22 @@ vec3 shade(int m, vec3 base, vec3 N, vec3 V) {
   return col;
 }
 
+// Mar: olas que se mueven (normal ondulada), reflejo del cielo con Fresnel y destellos del sol
+vec3 water(vec3 V) {
+  vec2 p = vPos.xz; float t = uTime;
+  vec3 n = normalize(vec3(
+    0.10 * sin(p.x * 0.021 + t * 1.3) + 0.06 * sin((p.x + p.y) * 0.037 + t * 1.9) + 0.04 * sin(p.y * 0.07 - t * 2.4),
+    1.0,
+    0.10 * cos(p.y * 0.024 + t * 1.1) + 0.06 * cos((p.x - p.y) * 0.031 + t * 1.6) + 0.04 * cos(p.x * 0.065 + t * 2.1)));
+  float sh = shadowAt();
+  vec3 base = mix(vec3(0.0, 0.1, 0.16), vec3(0.0, 0.45, 0.46), 0.4 + 0.4 * noise(p * 0.0015));
+  vec3 col = base * (0.5 + 0.8 * max(dot(n, uSun), 0.0) * sh);
+  vec3 R = reflect(-V, n);
+  float fr = 0.02 + 0.98 * pow(1.0 - max(dot(n, V), 0.0), 5.0);
+  col = mix(col, skyCol(R) * 0.8, fr * 0.4);
+  return col + uSunCol * pow(max(dot(R, uSun), 0.0), 400.0) * 6.0 * sh;
+}
+
 void main() {
   int m = int(vMat + 0.5);
   if (m == 9) { // sombra de contacto (semitransparente)
@@ -111,7 +127,7 @@ void main() {
   vec3 N = normalize(vNor);
   if (dot(N, V) < 0.0) N = -N;
   vec3 base = albedo(m, dist);
-  vec3 col = m == 3 ? base * 4.0 : shade(m, base, N, V);
+  vec3 col = m == 3 ? base * 4.0 : m == 11 ? water(V) : shade(m, base, N, V);
   vec3 D = -V;
   float fog = 1.0 - exp(-dist * uFog);
   col = mix(col, skyCol(normalize(vec3(D.x, max(D.y, 0.0) * 0.3 + 0.01, D.z))), fog);

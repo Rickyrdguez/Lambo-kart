@@ -24,7 +24,7 @@ export const MAPS = [
       asphalt: '#3d3d40',
       curbs: ['#f2f2f2', '#c81e1e'],
       mountains: { low: '#3f5a34', mid: '#6f746b', snow: '#e9eef2', midAt: 500, snowAt: 900 },
-      trees: { count: 260, pine: 0.7, snowy: false }
+      trees: { kind: 'pine', count: 260, pine: 0.7, snowy: false }
     }
   },
   {
@@ -46,7 +46,41 @@ export const MAPS = [
       asphalt: '#3a3c43',
       curbs: ['#f2f2f2', '#1e5bd8'],
       mountains: { low: '#b8c4d0', mid: '#8a96a3', snow: '#f4f7fb', midAt: 350, snowAt: 600 },
-      trees: { count: 220, pine: 1, snowy: true }
+      trees: { kind: 'pine', count: 220, pine: 1, snowy: true }
+    }
+  },
+  {
+    id: 'isla',
+    name: 'Isla Tropical',
+    subtitle: 'Muelle, salto sobre el mar y atajo',
+    points: [[0, 0], [1300, 0], [1850, 300], [1950, 900], [1900, 1500], [1550, 1950], [900, 2050],
+             [250, 2000], [-300, 1650], [150, 1300], [700, 1250], [650, 750], [150, 650], [-350, 400]],
+    ramps: [228],                                   // salto sobre la cala
+    boostPads: [223],                               // placa de turbo justo antes de la rampa
+    boxes: [0.1, 0.55, 0.85],                       // dónde hay cajas (fracción de la vuelta)
+    shortcuts: [{ from: 285, to: 352, width: 80 }], // atajo de arena por dentro de la horquilla
+    arches: [420],                                  // arco de roca sobre la pista
+    island: {
+      radius: 520,                                  // la tierra llega hasta esta distancia de la pista
+      water: [
+        { from: 95, to: 150, type: 'pier' },        // muelle de madera: agua a los lados
+        { from: 233, to: 249, type: 'cove' }        // cala: hay que saltarla
+      ]
+    },
+    theme: {
+      preview: '#1d8fb0',
+      sun: norm3([0.65, 0.2, 0.55]),                // sol bajo de atardecer
+      sunCol: [2.7, 1.8, 1.1],
+      horizon: [1.3, 0.5, 0.2],
+      zenith: [0.12, 0.15, 0.42],
+      clouds: 0.6,
+      fog: 0.00006,
+      ground: [[0.58, 0.45, 0.26], [0.75, 0.6, 0.36], [0.5, 0.4, 0.25]], // arena
+      asphalt: '#46474d',
+      curbs: ['#f2f2f2', '#ff7a1a'],
+      mountains: { low: '#2c5a2e', mid: '#3f6b3a', snow: '#3f6b3a', midAt: 400, snowAt: 99999 }, // islas lejanas
+      trees: { kind: 'palm', count: 150 },
+      decor: { rocks: 40, umbrellas: 26, lighthouse: { seg: 70, side: -1 } }
     }
   }
 ];

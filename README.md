@@ -20,25 +20,38 @@
 ## ✨ Características
 
 - 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo** y **plátanos**, marcador de posición, minimapa y clasificación final.
-- 🗺️ **Dos circuitos con ambientación propia**: *Valle Verde* (prados y pinos) y *Pico Nevado* (nieve, curvas en S y pinos nevados). Se elige el circuito o 🎲 *Aleatorio* antes de cada carrera; en multijugador lo elige el anfitrión.
+- 🗺️ **Tres circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
+  - *Valle Verde*: prados, pinos y una rampa.
+  - *Pico Nevado*: nieve, curvas en S, pinos nevados y dos rampas.
+  - *Isla Tropical*: atardecer junto al mar, **muelle de madera** (si te sales, al agua), **salto sobre una cala** con placa de turbo, **atajo de arena** entre palmeras y un arco de roca.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
+- 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
 - 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
 - 🎨 **Motor gráfico propio con WebGL2**, sin Three.js ni otros motores:
   - Sombras en tiempo real (*shadow mapping* con filtrado PCF)
   - Reflejos del cielo con efecto Fresnel en la pintura, los cristales y el cromo
   - Cielo con nubes procedurales, niebla atmosférica y *tone mapping* ACES
-  - Asfalto y hierba con texturas generadas por ruido en el shader
+  - Asfalto, hierba, nieve y arena con texturas generadas por ruido en el shader
+  - Mar animado con olas, reflejos del cielo y destellos del sol
 - 🚗 **Modelos 3D generados por código**: el Lamborghini, los karts, los árboles y las montañas se construyen a partir de secciones y formas geométricas.
 - 🤖 **IA de los rivales** que sigue la trazada y ajusta su ritmo para que la carrera esté igualada (*rubber banding*).
 - 📦 **Cero dependencias de desarrollo**: JavaScript moderno con módulos ES, sin *bundler* ni paso de compilación.
 
 <table>
   <tr>
+    <td><img src="docs/isla-muelle.jpg" alt="Muelle en Isla Tropical"></td>
     <td><img src="docs/nieve-rampa.jpg" alt="Rampa en Pico Nevado"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Muelle sobre el mar en Isla Tropical</sub></td>
+    <td align="center"><sub>Rampa con salto en Pico Nevado</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/movil.jpg" alt="Jugando en el móvil"></td>
     <td><img src="docs/circuitos.jpg" alt="Elegir circuito"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Rampa con salto en Pico Nevado</sub></td>
+    <td align="center"><sub>En el móvil, con controles táctiles</sub></td>
     <td align="center"><sub>Elegir circuito o aleatorio</sub></td>
   </tr>
   <tr>
@@ -61,6 +74,8 @@
 | `Espacio` | Usar objeto |
 | `Esc` | Salir al menú |
 | `Enter` | Otra carrera (anfitrión, al terminar) |
+
+En el **móvil** (en horizontal): ◀ ▶ abajo a la izquierda para girar, ▲ ▼ abajo a la derecha para acelerar y frenar, y el botón de objeto a media altura a la izquierda.
 
 ## 👥 Jugar con amigos
 
@@ -115,7 +130,7 @@ flowchart LR
 │   ├── core/             Matemáticas: vectores, ángulos y matrices 4x4
 │   ├── game/             Circuitos, pista, coches, física y saltos, IA, objetos, reglas de carrera
 │   ├── render/           Motor WebGL2: shaders, modelos, escenario y cámara
-│   ├── ui/               Marcador (canvas 2D) y menú (HTML)
+│   ├── ui/               Marcador (canvas 2D), menú (HTML) y controles táctiles
 │   └── net/              Multijugador online
 ├── server/               Servidor de reenvío (Cloudflare Workers + Durable Objects)
 ├── tools/dev-server.js   Servidor local sin dependencias

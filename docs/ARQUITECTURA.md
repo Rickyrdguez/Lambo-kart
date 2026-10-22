@@ -32,6 +32,28 @@ Al cambiar de circuito, `loadMap()` ([`game/session.js`](../src/game/session.js)
 
 Para añadir un circuito nuevo basta con añadir otro objeto a `MAPS`. El menú lo muestra solo, con su miniatura dibujada a partir del trazado.
 
+## Isla Tropical: agua, muelle, cala, atajo y placas de turbo
+
+Los circuitos con `island` en su definición no tienen un suelo infinito: tienen **mar** (un plano de agua con su propio material en el shader) y una **franja de arena** a cada lado de la pista, de `radius` unidades de ancho.
+
+- **Tierra y agua** ([`game/track.js`](../src/game/track.js)): al cargar el mapa, las franjas de tierra se rasterizan en una rejilla de celdas de 25 unidades (`buildLandMask`), así se puede preguntar al instante si un punto es tierra. Los tramos de `island.water` no tienen franja de tierra:
+  - **Muelle (`pier`)**: la pista son tablones sobre el agua, sin bordillos.
+  - **Cala (`cove`)**: no hay suelo; hay que saltarla con la rampa anterior.
+- **Caer al agua** (`isWater` y [`game/race.js`](../src/game/race.js)):
+  - Sobre la pista (asfalto o tablones) solo se puede caer en la cala. Fuera de la pista se consulta la rejilla.
+  - Al caer, el coche se hunde poco a poco y reaparece: en la cala, al otro lado; en el resto, en el centro de la pista donde cayó.
+- **Placas de turbo**: zonas sobre la pista que dan turbo al pasar. Hay una justo antes de la rampa de la cala para que el salto casi siempre llegue.
+- **Atajo**: un segmento recto entre dos puntos de la pista, con suelo de arena compactada (un poco más lento que el asfalto). Mientras vas por él, tu progreso en la carrera se calcula a lo largo del atajo, así que las vueltas y las posiciones se siguen contando bien.
+- **Mar animado** ([`render/shaders.js`](../src/render/shaders.js)): la normal del agua se ondula con varias ondas senoidales que cambian con el tiempo. El color mezcla el agua turquesa con el reflejo del cielo (Fresnel) y añade destellos del sol.
+
+## Móvil ([`ui/touch.js`](../src/ui/touch.js))
+
+- Se detecta una pantalla táctil con `matchMedia('(pointer: coarse)')`. Solo entonces se muestran los botones y se añade la clase `touch` al `<body>`.
+- Cada botón de dirección marca la misma tecla que el teclado mientras se mantiene pulsado. Usa *pointer events* con `setPointerCapture`, así funcionan **varios dedos a la vez** y el botón se suelta aunque el dedo se salga de él.
+- El botón de objeto, "Otra carrera" y ✕ llaman a la misma función que las teclas Espacio, Enter y Esc.
+- Gráficos más ligeros en móvil: resolución 1x y mapa de sombras de 1024 en vez de 2048.
+- En vertical aparece un aviso para girar el móvil. Al empezar a jugar se pide pantalla completa en horizontal.
+
 ## Rampas y saltos
 
 - **Física** ([`game/physics.js`](../src/game/physics.js)): cada coche tiene altura `z`, velocidad vertical `vz` y tiempo en el aire `air`.

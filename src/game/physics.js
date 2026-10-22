@@ -6,7 +6,7 @@ import { rampUnder } from './track.js';
 import { owned } from './cars.js';
 
 const ACCEL = 0.18, BRAKE = 0.3, FRICTION = 0.985, TURN = 0.055;
-const OFFTRACK_SLOWDOWN = 0.45, BOOST = 1.6;
+const OFFTRACK_SLOWDOWN = 0.45, SHORTCUT_SLOWDOWN = 0.85, BOOST = 1.6;
 const GRAVITY = 0.12;        // unidades/fotograma² hacia abajo
 const AIR_TURN = 0.3;        // en el aire se gira mucho menos
 const LANDING_BOOST = 25;    // mini-turbo al aterrizar tras un buen salto
@@ -23,7 +23,8 @@ export function physics(c, inp, dt) {
 }
 
 function drive(c, inp, dt) {
-  let max = c.maxSpeed * (c.offTrack ? OFFTRACK_SLOWDOWN : 1);
+  const terrain = c.onShortcut ? SHORTCUT_SLOWDOWN : c.offTrack ? OFFTRACK_SLOWDOWN : 1;
+  let max = c.maxSpeed * terrain;
   if (c.boost > 0) { c.boost -= dt; max *= BOOST; c.speed = max; }
   else if (inp.up && c.speed < max) c.speed = Math.min(max, c.speed + ACCEL * dt);
   else if (inp.down) c.speed -= BRAKE * dt;
@@ -78,8 +79,9 @@ export function collideCars() {
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
       if (d === 0 || d >= minDist) continue;
       const push = (minDist - d) / 2, nx = dx / d, ny = dy / d;
-      if (owned(a)) { a.x -= nx * push; a.y -= ny * push; a.speed *= 0.97; }
-      if (owned(b)) { b.x += nx * push; b.y += ny * push; b.speed *= 0.97; }
+      const friction = a.air > 0 || b.air > 0 ? 1 : 0.97; // rozarse en el aire no frena (si no, no se llega al otro lado)
+      if (owned(a)) { a.x -= nx * push; a.y -= ny * push; a.speed *= friction; }
+      if (owned(b)) { b.x += nx * push; b.y += ny * push; b.speed *= friction; }
     }
   }
 }

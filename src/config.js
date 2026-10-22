@@ -1,5 +1,9 @@
 // Ajustes del juego. Todo lo que quieras "tunear" está aquí.
 
+// ---- Dispositivo ----
+// Pantallas táctiles (móvil, tablet): controles en pantalla y gráficos algo más ligeros
+export const IS_TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+
 // ---- Carrera ----
 export const LAPS = 3;
 export const TRACK_WIDTH = 230;

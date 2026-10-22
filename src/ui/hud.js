@@ -1,5 +1,5 @@
 // Marcador sobre el juego (canvas 2D): vuelta, posición, objeto, minimapa, cuenta atrás y resultados.
-import { LAPS } from '../config.js';
+import { LAPS, IS_TOUCH } from '../config.js';
 import { clamp } from '../core/math.js';
 import { game } from '../game/state.js';
 import { me } from '../game/cars.js';
@@ -93,14 +93,16 @@ function drawItemSlot(p) {
     ctx.fillStyle = '#ff5722'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('TURBO', x + 35, y + 52);
   }
+  if (IS_TOUCH) return; // en móvil el objeto se usa con su botón
   ctx.fillStyle = '#eee'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillText('ESPACIO', x + 35, y + 74);
 }
 
 function drawMinimap() {
-  const b = track.bounds, size = 180, pad = 10;
+  const b = track.bounds, size = IS_TOUCH ? 120 : 180, pad = IS_TOUCH ? 6 : 10;
   const s = size / Math.max(b.x1 - b.x0, b.y1 - b.y0), h = (b.y1 - b.y0) * s;
-  const ox = hudCanvas.width - size - pad * 2, oy = hudCanvas.height - h - pad * 3;
+  // en móvil, arriba a la derecha (abajo están los botones)
+  const ox = hudCanvas.width - size - pad * 2, oy = IS_TOUCH ? pad : hudCanvas.height - h - pad * 3;
   const mx = x => ox + pad + (x - b.x0) * s, my = y => oy + pad + (y - b.y0) * s;
   panel(ox, oy, size + pad * 2, h + pad * 2);
   ctx.beginPath();
@@ -115,9 +117,15 @@ function drawMinimap() {
 }
 
 // ---- Textos grandes ----
+// Los textos grandes se encogen en pantallas bajas (móvil en horizontal)
+const textScale = () => Math.min(1, hudCanvas.height / 560);
+
 function bigText(text, y, size, color) {
+  const k = textScale(), cy = hudCanvas.height / 2;
+  y = cy + (y - cy) * k;
+  size *= k;
   ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.lineWidth = 6; ctx.strokeStyle = '#000'; ctx.strokeText(text, hudCanvas.width / 2, y);
+  ctx.lineWidth = 6 * k; ctx.strokeStyle = '#000'; ctx.strokeText(text, hudCanvas.width / 2, y);
   ctx.fillStyle = color; ctx.fillText(text, hudCanvas.width / 2, y);
 }
 
@@ -125,6 +133,7 @@ function drawOverlay() {
   const cy = hudCanvas.height / 2;
   if (game.state === 'countdown') bigText(String(Math.ceil(game.countdown)), cy * 0.6, 120, '#fff');
   if (game.state === 'race' && game.goTimer > 0) bigText('¡YA!', cy * 0.6, 120, '#4caf50');
+  if (me().sink > 0) bigText('¡Al agua!', cy * 0.6, 72, '#4fc3f7');
   if (game.state === 'race' && me().done) drawResults(cy);
 }
 
@@ -133,6 +142,7 @@ function drawResults(cy) {
   const order = ranking(), pos = order.indexOf(me()) + 1;
   bigText(pos === 1 ? '¡HAS GANADO!' : `Has quedado ${ordinal(pos)}`, cy - 120, 64, me().color);
   order.forEach((c, i) => bigText(`${ordinal(i + 1)}  ${c.name}`, cy - 40 + i * 36, 26, c.color));
+  if (IS_TOUCH) { if (!isHost()) bigText('Esperando al anfitrión...', cy + 130, 22, '#4caf50'); return; } // hay botones
   const hint = isHost() ? 'ENTER: otra carrera  ·  ESC: salir al menú' : 'Esperando al anfitrión...  ·  ESC: salir';
   bigText(hint, cy + 130, 26, '#4caf50');
 }

@@ -152,6 +152,7 @@ export function followNet(c, dt) {
   n.x += Math.cos(n.angle) * n.speed * dt;
   n.y += Math.sin(n.angle) * n.speed * dt;
   if (n.z > 0) { n.vz -= 0.12 * dt; n.z = Math.max(0, n.z + n.vz * dt); } // sigue cayendo si va en el aire
+  if (Math.hypot(n.x - c.x, n.y - c.y) > 150) Object.assign(c, { x: n.x, y: n.y, z: n.z }); // ha reaparecido lejos
   c.x += (n.x - c.x) * 0.3;
   c.y += (n.y - c.y) * 0.3;
   c.z += (n.z - c.z) * 0.3;

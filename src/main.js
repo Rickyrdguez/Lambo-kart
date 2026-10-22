@@ -11,10 +11,12 @@ import { canvas, gl, initRenderer, render } from './render/renderer.js';
 import { updateCamera } from './render/camera.js';
 import { hudCanvas, renderHUD, showMessage } from './ui/hud.js';
 import { initMenu } from './ui/menu.js';
+import { initTouch, updateTouch } from './ui/touch.js';
+import { IS_TOUCH } from './config.js';
 import { isHost, leaveGame, netTick } from './net/network.js';
 
 function resize() {
-  const dpr = Math.min(devicePixelRatio || 1, 1.5); // limitado para no castigar la GPU
+  const dpr = Math.min(devicePixelRatio || 1, IS_TOUCH ? 1 : 1.5); // limitado para no castigar la GPU
   canvas.width = innerWidth * dpr | 0;
   canvas.height = innerHeight * dpr | 0;
   hudCanvas.width = innerWidth;
@@ -38,6 +40,7 @@ function loop(t) {
   updateCamera(dt);
   render(t / 1000);
   renderHUD();
+  updateTouch();
   requestAnimationFrame(loop);
 }
 
@@ -54,6 +57,7 @@ function boot() {
   showMenuScene();
   initMenu();
   bindKeyboard(onPress);
+  initTouch(onPress);
   requestAnimationFrame(loop);
 }
 

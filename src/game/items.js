@@ -12,7 +12,7 @@ const TURBO_TIME = 80, SPIN_TIME = 50;
 
 export function makeBoxes() {
   game.boxes = [];
-  BOX_SPOTS.forEach(f => {
+  (track.map.boxes || BOX_SPOTS).forEach(f => {
     const seg = Math.floor(track.N * f);
     BOX_LANES.forEach(lane => {
       const p = pointAt(seg, lane);

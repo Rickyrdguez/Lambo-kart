@@ -1,6 +1,6 @@
 // Motor de render WebGL2: compila shaders, sube la geometría y dibuja cada fotograma
 // en tres pasadas: sombras -> cielo -> escena.
-import { SHADOW_SIZE } from '../config.js';
+import { SHADOW_SIZE as SHADOW_SIZE_PC, IS_TOUCH } from '../config.js';
 import { modelMatrix, IDENTITY } from '../core/mat4.js';
 import { game } from '../game/state.js';
 import { track } from '../game/track.js';
@@ -9,6 +9,8 @@ import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
 import { buildWorld, buildProps } from './world.js';
 import { buildLambo, buildKart, buildItemBox, buildBanana, buildFlame, buildBlob } from './models.js';
+
+const SHADOW_SIZE = IS_TOUCH ? 1024 : SHADOW_SIZE_PC; // sombras más ligeras en móvil
 
 export const canvas = document.getElementById('gl');
 export const gl = canvas.getContext('webgl2', { antialias: true });

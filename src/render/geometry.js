@@ -4,7 +4,7 @@ import { rgb, norm3, sub3, dot3, cross3, avg3 } from '../core/math.js';
 import { transformPoint } from '../core/mat4.js';
 
 // Materiales: el shader cambia de aspecto según este número
-export const M = { MATTE: 0, PAINT: 1, GLASS: 2, EMIT: 3, ASPHALT: 4, GRASS: 5, CHROME: 7, RAINBOW: 8, BLOB: 9, CHECKER: 10 };
+export const M = { MATTE: 0, PAINT: 1, GLASS: 2, EMIT: 3, ASPHALT: 4, GRASS: 5, CHROME: 7, RAINBOW: 8, BLOB: 9, CHECKER: 10, WATER: 11 };
 export const FLOATS_PER_VERTEX = 12;
 
 export function vtx(g, p, n, c, uv, mat) {
