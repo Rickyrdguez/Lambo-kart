@@ -1,6 +1,6 @@
 /* Lambo Kart - estilos del menu */
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+#gl, #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
 #hud { pointer-events: none; }
 
 /* ---- Menú ---- */
@@ -35,5 +35,28 @@ button.ghost { background: transparent; color: #aaa; font-weight: 600; padding: 
 #players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 #players li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,.06); border-radius: 8px; font-weight: 600; }
 .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+/* En pantallas bajas el título se encoge para que quepa la sala de espera */
+@media (max-height: 820px) {
+  h1 { font-size: clamp(32px, 7vh, 64px); }
+  #ui { gap: 10px; }
+  .card { padding: 18px; gap: 10px; }
+}
+
+/* ---- Elegir circuito ---- */
+.card.wide { width: min(620px, 100%); }
+.maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.maps.small { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#lobby-map-pick .hint { margin-bottom: 6px; }
+.map-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; text-align: left;
+            background: #23262f; border: 2px solid transparent; }
+.map-card:hover { background: #2d313c; }
+.map-card.selected { border-color: #ffb400; }
+.map-card canvas { width: 100%; height: auto; border-radius: 6px; display: block; }
+.map-card strong { font-size: 15px; }
+.map-card small { font-size: 12px; color: #aaa; font-weight: 400; }
+.maps.small .map-card { padding: 5px; gap: 4px; }
+.maps.small .map-card strong { font-size: 12px; text-align: center; }
+#lobby-map { font-weight: 600; color: #fff; }
+
 #status { min-height: 20px; margin: 0; font-weight: 600; text-align: center; color: #ddd; }
 #status.error { color: #ff8a80; }

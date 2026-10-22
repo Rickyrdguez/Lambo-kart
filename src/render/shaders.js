@@ -5,6 +5,7 @@ const HEAD = '#version 300 es\nprecision highp float;\n';
 // Funciones compartidas: ruido procedural, color del cielo y tone mapping
 const COMMON = `
 uniform vec3 uSun; uniform vec3 uSunCol; uniform float uTime;
+uniform vec3 uHorizon; uniform vec3 uZenith;
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -17,7 +18,7 @@ float fbm(vec2 p) {
 }
 vec3 skyCol(vec3 d) {
   float y = max(d.y, 0.0);
-  vec3 c = mix(vec3(0.62, 0.74, 0.9), vec3(0.14, 0.32, 0.75), pow(y, 0.5));
+  vec3 c = mix(uHorizon, uZenith, pow(y, 0.5));
   float s = max(dot(d, uSun), 0.0);
   return c + uSunCol * (pow(s, 1500.0) * 30.0 + pow(s, 10.0) * 0.05);
 }
@@ -43,6 +44,8 @@ void main() {
 export const MAIN_FS = HEAD + 'precision highp sampler2DShadow;\n' + COMMON + `
 in vec3 vPos; in vec3 vNor; in vec3 vCol; in vec2 vUv; in float vMat; in vec4 vLight;
 uniform sampler2DShadow uShadow; uniform vec3 uCam;
+uniform vec3 uGroundA, uGroundB, uGroundC; // colores del suelo según el circuito
+uniform float uFog;
 out vec4 outColor;
 
 // Sombra suavizada con 9 muestras (PCF)
@@ -65,8 +68,8 @@ vec3 albedo(int m, float dist) {
     b *= mix(1.0, 0.75 + 0.5 * grain, near) * (0.8 + 0.4 * fbm(vPos.xz * 0.006));
   }
   if (m == 5) {
-    b = mix(vec3(0.04, 0.11, 0.015), vec3(0.13, 0.24, 0.04), fbm(vPos.xz * 0.0025));
-    b = mix(b, vec3(0.16, 0.14, 0.06), smoothstep(0.6, 0.8, fbm(vPos.xz * 0.0013 + 3.0)) * 0.6);
+    b = mix(uGroundA, uGroundB, fbm(vPos.xz * 0.0025));
+    b = mix(b, uGroundC, smoothstep(0.6, 0.8, fbm(vPos.xz * 0.0013 + 3.0)) * 0.6);
     b *= mix(1.0, 0.7 + 0.6 * noise(vPos.xz * 0.45), near);
   }
   if (m == 8) b = pow(0.5 + 0.5 * cos(6.2832 * (uTime * 0.4 + vPos.y * 0.04 + vec3(0.0, 0.33, 0.67))), vec3(2.2));
@@ -110,7 +113,7 @@ void main() {
   vec3 base = albedo(m, dist);
   vec3 col = m == 3 ? base * 4.0 : shade(m, base, N, V);
   vec3 D = -V;
-  float fog = 1.0 - exp(-dist * 0.00011);
+  float fog = 1.0 - exp(-dist * uFog);
   col = mix(col, skyCol(normalize(vec3(D.x, max(D.y, 0.0) * 0.3 + 0.01, D.z))), fog);
   outColor = vec4(tonemap(col), 1.0);
 }`;
@@ -135,13 +138,14 @@ void main() {
 export const SKY_FS = HEAD + COMMON + `
 in vec2 vNdc;
 uniform vec3 uFwd, uRight, uUp; uniform vec2 uTan;
+uniform float uClouds; // umbral de nubes: más bajo = más nublado
 out vec4 outColor;
 void main() {
   vec3 d = normalize(uFwd + vNdc.x * uTan.x * uRight + vNdc.y * uTan.y * uUp);
   vec3 col = skyCol(d);
   if (d.y > 0.0) { // nubes que se mueven
     vec2 uv = d.xz / (d.y + 0.08) * 1.2 + vec2(uTime * 0.006, uTime * 0.002);
-    float c = smoothstep(0.5, 0.8, fbm(uv * 1.6));
+    float c = smoothstep(uClouds, uClouds + 0.3, fbm(uv * 1.6));
     float lit = 0.8 + 0.3 * max(dot(d, uSun), 0.0);
     col = mix(col, vec3(1.05, 1.0, 0.97) * 1.3 * lit, c * smoothstep(0.0, 0.25, d.y) * 0.9);
   }

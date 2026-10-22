@@ -47,7 +47,7 @@ function poly(points, color) {
 function drawLabels() {
   game.cars.forEach(c => {
     if (c === me()) return;
-    const p = projectToScreen(c.x, 40, c.y, hudCanvas.width, hudCanvas.height);
+    const p = projectToScreen(c.x, 40 + c.z, c.y, hudCanvas.width, hudCanvas.height);
     if (!p) return;
     ctx.font = `bold ${clamp(14 * p.s, 9, 18) | 0}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -106,6 +106,8 @@ function drawMinimap() {
   ctx.beginPath();
   track.points.forEach((p, i) => i ? ctx.lineTo(mx(p.x), my(p.y)) : ctx.moveTo(mx(p.x), my(p.y)));
   ctx.closePath(); ctx.strokeStyle = '#aaa'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.fillStyle = '#ffc400'; // rampas
+  track.ramps.forEach(r => ctx.fillRect(mx(r.x) - 3, my(r.y) - 3, 6, 6));
   game.cars.forEach(c => {
     ctx.fillStyle = c.color;
     ctx.beginPath(); ctx.arc(mx(c.x), my(c.y), c === me() ? 6 : 4, 0, Math.PI * 2); ctx.fill();

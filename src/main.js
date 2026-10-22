@@ -1,6 +1,7 @@
 // Punto de entrada: prepara todo y arranca el bucle del juego.
 import { game } from './game/state.js';
 import { buildTrack } from './game/track.js';
+import { MAPS } from './game/maps.js';
 import { me } from './game/cars.js';
 import { updateRace } from './game/race.js';
 import { useItem } from './game/items.js';
@@ -48,7 +49,7 @@ function boot() {
     showMessage('Tu navegador no soporta WebGL2. Prueba con Chrome, Edge o Firefox actualizados.');
     return;
   }
-  buildTrack();
+  buildTrack(MAPS[0]);
   initRenderer();
   showMenuScene();
   initMenu();

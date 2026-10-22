@@ -12,6 +12,7 @@ export function makeCar(id, name, color, human) {
     id, name, color, human,
     model: human ? 'lambo' : 'kart',
     x: p.x, y: p.y, angle: track.points[seg].a, speed: 0,
+    z: 0, vz: 0, air: 0, pitch: 0,              // altura, velocidad vertical, tiempo en el aire, inclinación
     seg, lap: 0, done: false, offTrack: false,
     item: null, boost: 0, spin: 0,
     base, maxSpeed: base,

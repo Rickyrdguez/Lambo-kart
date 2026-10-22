@@ -20,6 +20,8 @@
 ## ✨ Características
 
 - 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo** y **plátanos**, marcador de posición, minimapa y clasificación final.
+- 🗺️ **Dos circuitos con ambientación propia**: *Valle Verde* (prados y pinos) y *Pico Nevado* (nieve, curvas en S y pinos nevados). Se elige el circuito o 🎲 *Aleatorio* antes de cada carrera; en multijugador lo elige el anfitrión.
+- 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
 - 🌍 **Multijugador online de hasta 4 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación. Los huecos libres los ocupan karts con IA. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
 - 🎨 **Motor gráfico propio con WebGL2**, sin Three.js ni otros motores:
   - Sombras en tiempo real (*shadow mapping* con filtrado PCF)
@@ -32,12 +34,20 @@
 
 <table>
   <tr>
+    <td><img src="docs/nieve-rampa.jpg" alt="Rampa en Pico Nevado"></td>
+    <td><img src="docs/circuitos.jpg" alt="Elegir circuito"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Rampa con salto en Pico Nevado</sub></td>
+    <td align="center"><sub>Elegir circuito o aleatorio</sub></td>
+  </tr>
+  <tr>
     <td><img src="docs/menu.jpg" alt="Menú principal"></td>
     <td><img src="docs/sala.jpg" alt="Sala de espera online"></td>
   </tr>
   <tr>
     <td align="center"><sub>Menú principal</sub></td>
-    <td align="center"><sub>Sala de espera con código para invitar</sub></td>
+    <td align="center"><sub>Sala de espera: código para invitar y elección de circuito</sub></td>
   </tr>
 </table>
 
@@ -57,7 +67,7 @@
 1. Abre el juego y pulsa **Iniciar partida**.
 2. Comparte el **código** o pulsa **Copiar enlace** y envíalo.
 3. Tus amigos abren el enlace (o pulsan **Unirse a partida** y escriben el código).
-4. Cuando estéis todos en la sala, pulsa **Empezar carrera**.
+4. Elige el circuito (o *Aleatorio*) y, cuando estéis todos en la sala, pulsa **Empezar carrera**.
 
 ## 🏗️ Arquitectura
 
@@ -103,7 +113,7 @@ flowchart LR
 │   ├── config.js         Ajustes (vueltas, colores, cámara, luz, red)
 │   ├── styles.css        Estilos del menú
 │   ├── core/             Matemáticas: vectores, ángulos y matrices 4x4
-│   ├── game/             Pista, coches, física, IA, objetos, reglas de carrera
+│   ├── game/             Circuitos, pista, coches, física y saltos, IA, objetos, reglas de carrera
 │   ├── render/           Motor WebGL2: shaders, modelos, escenario y cámara
 │   ├── ui/               Marcador (canvas 2D) y menú (HTML)
 │   └── net/              Multijugador online

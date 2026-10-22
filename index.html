@@ -29,6 +29,12 @@
     <p class="hint">Flechas / WASD: conducir · Espacio: usar objeto · Esc: salir</p>
   </div>
 
+  <div class="card wide hidden" id="scr-maps">
+    <h2>Elige circuito</h2>
+    <div class="maps" id="map-list"></div>
+    <button class="ghost" data-back>Volver</button>
+  </div>
+
   <div class="card hidden" id="scr-join">
     <h2>Unirse a partida</h2>
     <label>Código de la partida <input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off"></label>
@@ -47,6 +53,11 @@
         <button id="btn-copy-code">Copiar código</button>
       </div>
     </div>
+    <div id="lobby-map-pick">
+      <p class="hint">Circuito</p>
+      <div class="maps small" id="lobby-maps"></div>
+    </div>
+    <p class="hint hidden" id="lobby-map"></p>
     <ul id="players"></ul>
     <button class="primary" id="btn-start">Empezar carrera</button>
     <p class="hint" id="lobby-wait">Esperando a que el anfitrión empiece la carrera…</p>

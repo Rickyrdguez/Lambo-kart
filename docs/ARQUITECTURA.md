@@ -20,6 +20,29 @@ Este documento explica cómo funciona el juego por dentro. Cada apartado indica 
 - **Coordenadas**: la lógica del juego es 2D (`x`, `y` del mapa). Al dibujar, `y` se convierte en el eje `Z` del espacio 3D y la altura es `Y`.
 - **Progreso**: el *segmento* de un coche es el punto de la pista más cercano. Para que sea rápido, solo se busca cerca del último segmento conocido. Una vuelta se cuenta cuando el segmento salta del final al principio de la pista.
 
+## Circuitos ([`game/maps.js`](../src/game/maps.js))
+
+Cada circuito es un objeto de datos:
+
+- **`points`**: los puntos de control del trazado.
+- **`ramps`**: los segmentos de la pista donde hay una rampa.
+- **`theme`**: la ambientación. Incluye la dirección y el color del sol; los colores del cielo y del suelo; la densidad de la niebla y de las nubes; los colores del asfalto, los bordillos y las montañas; y el tipo y la cantidad de árboles.
+
+Al cambiar de circuito, `loadMap()` ([`game/session.js`](../src/game/session.js)) reconstruye la pista y vuelve a generar el escenario en la GPU. Los colores del tema llegan a los shaders como *uniforms*, así que el mismo shader dibuja la hierba de *Valle Verde* y la nieve de *Pico Nevado*.
+
+Para añadir un circuito nuevo basta con añadir otro objeto a `MAPS`. El menú lo muestra solo, con su miniatura dibujada a partir del trazado.
+
+## Rampas y saltos
+
+- **Física** ([`game/physics.js`](../src/game/physics.js)): cada coche tiene altura `z`, velocidad vertical `vz` y tiempo en el aire `air`.
+  - Sobre una rampa, el coche sube pegado a ella y su `vz` es la velocidad por la pendiente.
+  - Cuando se acaba la rampa, sigue con esa `vz` y la gravedad lo hace caer.
+  - En el aire se gira mucho menos y no se acelera.
+  - Al aterrizar tras un buen salto se gana un mini-turbo.
+- **Altura del suelo**: `rampUnder()` ([`game/track.js`](../src/game/track.js)) pasa la posición del coche a coordenadas de la rampa (a lo largo y a lo ancho) para saber si está encima y a qué altura.
+- **Dibujo**: la matriz de cada coche incluye la altura y la inclinación del morro (`pitch`). La sombra de contacto se queda en el suelo, y la sombra real la calcula el *shadow mapping*.
+- **Reglas**: en el aire no se pisan plátanos, y dos coches a distinta altura no chocan.
+
 ## Física e IA
 
 - **Física arcade** ([`game/physics.js`](../src/game/physics.js)): aceleración, rozamiento y velocidad máxima, que baja fuera de la pista. El giro depende de la velocidad. Los choques entre coches se resuelven separando los círculos que se solapan.
@@ -95,8 +118,9 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 | `taken` / `noroom` / `full` | servidor → jugador | Código en uso / no existe la sala / sala llena |
 | `closed` | servidor → invitados | El anfitrión se ha ido |
 | `hello` | jugador → servidor | Nombre del jugador |
-| `start` | anfitrión → todos | Empieza la carrera |
-| `car` | cada jugador → todos | Posición, velocidad, vuelta y objeto de su coche |
+| `map` | anfitrión → todos | Circuito elegido en la sala (o aleatorio) |
+| `start` | anfitrión → todos | Empieza la carrera, con el circuito ya sorteado |
+| `car` | cada jugador → todos | Posición, altura, velocidad, vuelta y objeto de su coche |
 | `world` | anfitrión → todos | Estado, IA, cajas, plátanos y llegada |
 | `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / has pisado un plátano |
 | `banana` | invitado → anfitrión | He tirado un plátano |

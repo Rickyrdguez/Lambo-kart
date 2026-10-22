@@ -1,8 +1,9 @@
 // Cámara trasera estilo GTA y matriz de la luz para las sombras.
-import { FOV_DEG, CAM_DIST, CAM_H, SUN, SHADOW_RANGE } from '../config.js';
+import { FOV_DEG, CAM_DIST, CAM_H, SHADOW_RANGE } from '../config.js';
 import { UP, angDiff, norm3, sub3, cross3 } from '../core/math.js';
 import { mat4Mul, perspective, ortho, lookAt, IDENTITY } from '../core/mat4.js';
 import { me } from '../game/cars.js';
+import { track } from '../game/track.js';
 
 // a = ángulo de la cámara (sigue al coche con retraso). VP = última matriz usada
 export const cam = { a: 0, VP: IDENTITY };
@@ -17,8 +18,9 @@ export function updateCamera(dt) {
 
 export function cameraView(aspect) {
   const p = me(), fx = Math.cos(cam.a), fz = Math.sin(cam.a);
-  const eye = [p.x - fx * CAM_DIST, CAM_H, p.y - fz * CAM_DIST];
-  const target = [p.x + fx * 90, 12, p.y + fz * 90];
+  // al saltar, la cámara sube con el coche (algo menos, para que se note el salto)
+  const eye = [p.x - fx * CAM_DIST, CAM_H + p.z * 0.6, p.y - fz * CAM_DIST];
+  const target = [p.x + fx * 90, 12 + p.z * 0.8, p.y + fz * 90];
   const fovH = (FOV_DEG + Math.min(9, Math.abs(p.speed) * 0.6)) * Math.PI / 180; // más velocidad, más campo
   const tanY = Math.min(Math.tan(fovH / 2) / aspect, Math.tan(0.6));
   const VP = mat4Mul(perspective(2 * Math.atan(tanY), aspect, 4, 16000), lookAt(eye, target, UP));
@@ -33,7 +35,8 @@ export function lightMatrix() {
   const p = me(), step = 16;
   const cx = Math.round((p.x + Math.cos(cam.a) * 400) / step) * step;
   const cz = Math.round((p.y + Math.sin(cam.a) * 400) / step) * step;
-  const eye = [cx + SUN[0] * 3000, SUN[1] * 3000, cz + SUN[2] * 3000];
+  const sun = track.map.theme.sun;
+  const eye = [cx + sun[0] * 3000, sun[1] * 3000, cz + sun[2] * 3000];
   return mat4Mul(ortho(SHADOW_RANGE, 1000, 5000), lookAt(eye, [cx, 0, cz], UP));
 }
 

@@ -1,23 +1,27 @@
-// Escenario en 3D: hierba, montañas, asfalto, bordillos, meta y árboles.
+// Escenario en 3D: suelo, montañas, asfalto, bordillos, meta, rampas y árboles.
+// Los colores salen del tema del circuito (game/maps.js).
 import { TRACK_WIDTH as W } from '../config.js';
-import { UP, rgb } from '../core/math.js';
+import { UP, rgb, norm3 } from '../core/math.js';
 import { modelMatrix } from '../core/mat4.js';
 import { track, pointAt } from '../game/track.js';
-import { M, vtx, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
+import { M, vtx, tri, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
+
+const theme = () => track.map.theme;
 
 // Suelo, montañas y pista (no proyectan sombra)
 export function buildWorld() {
   const g = [];
-  buildGrass(g);
+  buildGround(g);
   buildMountains(g);
   buildTrackMesh(g);
   return g;
 }
 
-// Árboles (sí proyectan sombra)
+// Árboles y rampas (sí proyectan sombra)
 export function buildProps() {
   const g = [];
   track.decor.forEach(t => buildTree(g, t));
+  track.ramps.forEach(r => buildRamp(g, r));
   return g;
 }
 
@@ -39,12 +43,12 @@ function trackStrip(g, i, f0, f1, o1, o2, h, color, mat) {
 }
 
 function buildTrackMesh(g) {
+  const { asphalt, curbs } = theme();
   for (let i = 0; i < track.N; i++) {
-    trackStrip(g, i, 0, 1, -W / 2 - 2, W / 2 + 2, 0.3, '#3d3d40', M.ASPHALT);
-    [0, 0.5].forEach((f, k) => {                     // bordillos rojos y blancos
-      const col = k ? '#c81e1e' : '#f2f2f2';
-      trackStrip(g, i, f, f + 0.5, W / 2, W / 2 + 16, 0.5, col, M.MATTE);
-      trackStrip(g, i, f, f + 0.5, -W / 2 - 16, -W / 2, 0.5, col, M.MATTE);
+    trackStrip(g, i, 0, 1, -W / 2 - 2, W / 2 + 2, 0.3, asphalt, M.ASPHALT);
+    [0, 0.5].forEach((f, k) => {                     // bordillos de dos colores
+      trackStrip(g, i, f, f + 0.5, W / 2, W / 2 + 16, 0.5, curbs[k], M.MATTE);
+      trackStrip(g, i, f, f + 0.5, -W / 2 - 16, -W / 2, 0.5, curbs[k], M.MATTE);
     });
     trackStrip(g, i, 0, 1, W / 2 - 12, W / 2 - 7, 0.45, '#e6e6e6', M.MATTE);   // líneas laterales
     trackStrip(g, i, 0, 1, -W / 2 + 7, -W / 2 + 12, 0.45, '#e6e6e6', M.MATTE);
@@ -73,14 +77,29 @@ function buildGantry(g) {
   });
 }
 
+// Rampa en cuña con franjas amarillas y negras. Su altura coincide con rampUnder() de track.js.
+function buildRamp(g, r) {
+  const local = [], L = r.len, H = r.h, hw = r.width / 2, strips = 8;
+  const n = norm3([-H, L, 0]), side = rgb('#8a8d93');
+  for (let i = 0; i < strips; i++) {
+    const x0 = L * i / strips, x1 = L * (i + 1) / strips, y0 = H * i / strips, y1 = H * (i + 1) / strips;
+    quadN(local, [[x0, y0 + 0.4, -hw], [x0, y0 + 0.4, hw], [x1, y1 + 0.4, hw], [x1, y1 + 0.4, -hw]],
+          [n, n, n, n], rgb(i % 2 ? '#1c1c1c' : '#ffc400'), M.PAINT);
+  }
+  quadN(local, [[L, 0, -hw], [L, 0, hw], [L, H + 0.4, hw], [L, H + 0.4, -hw]], Array(4).fill([1, 0, 0]), side, M.MATTE);
+  tri(local, [0, 0, hw], [L, 0, hw], [L, H + 0.4, hw], [0, 0, 1], side, M.MATTE);
+  tri(local, [0, 0, -hw], [L, H + 0.4, -hw], [L, 0, -hw], [0, 0, -1], side, M.MATTE);
+  appendTransformed(g, local, modelMatrix(r.x, r.y, r.a));
+}
+
 // ---- Entorno ----
-function buildGrass(g) {
+function buildGround(g) {
   const [cx, cz] = center(), s = 16000;
   quadN(g, [[cx - s, 0, cz - s], [cx + s, 0, cz - s], [cx + s, 0, cz + s], [cx - s, 0, cz + s]],
         [UP, UP, UP, UP], [1, 1, 1], M.GRASS);
 }
 
-// Anillo de montañas lejanas con nieve en las cumbres
+// Anillo de montañas lejanas, con nieve en las cumbres
 function buildMountains(g) {
   const [cx, cz] = center(), n = 160;
   const height = a => Math.max(150, 650 + 380 * Math.sin(3 * a + 1) + 220 * Math.sin(7 * a + 2) + 130 * Math.sin(19 * a));
@@ -96,7 +115,10 @@ function buildMountains(g) {
   }
 }
 
-const mountainColor = h => h > 900 ? rgb('#e9eef2') : h > 500 ? rgb('#6f746b') : rgb('#3f5a34');
+function mountainColor(h) {
+  const m = theme().mountains;
+  return rgb(h > m.snowAt ? m.snow : h > m.midAt ? m.mid : m.low);
+}
 
 function mountainQuad(g, a, b, c, d) {
   [[a, b, c], [a, c, d]].forEach(t => {
@@ -105,17 +127,25 @@ function mountainQuad(g, a, b, c, d) {
   });
 }
 
+// ---- Árboles ----
 // Pino (conos apilados) o árbol redondo, con un tono de verde algo distinto cada uno
 function buildTree(g, t) {
-  const s = t.s, k = 0.85 + Math.random() * 0.3;
+  const s = t.s, k = 0.85 + Math.random() * 0.3, snowy = theme().trees.snowy;
   const green = hex => '#' + rgb(hex).map(v => Math.min(255, v * 255 * k | 0).toString(16).padStart(2, '0')).join('');
   frustumY(g, t.x, t.y, 0, 26 * s, 3.5 * s, 2.5 * s, '#5b3a24', M.MATTE, 7);
   if (t.pine) {
-    frustumY(g, t.x, t.y, 16 * s, 52 * s, 26 * s, 0, green('#244f22'), M.MATTE);
-    frustumY(g, t.x, t.y, 36 * s, 70 * s, 20 * s, 0, green('#2a5a26'), M.MATTE);
-    frustumY(g, t.x, t.y, 54 * s, 88 * s, 13 * s, 0, green('#30652b'), M.MATTE);
+    [[16, 52, 26, '#244f22'], [36, 70, 20, '#2a5a26'], [54, 88, 13, '#30652b']].forEach(([y0, y1, r, col]) => {
+      frustumY(g, t.x, t.y, y0 * s, y1 * s, r * s, 0, green(snowy ? '#1f4026' : col), M.MATTE);
+      if (snowy) snowCap(g, t, y0 * s, y1 * s, r * s);
+    });
   } else {
     frustumY(g, t.x, t.y, 20 * s, 42 * s, 12 * s, 30 * s, green('#3d6e2a'), M.MATTE);
     frustumY(g, t.x, t.y, 42 * s, 70 * s, 30 * s, 0, green('#467a30'), M.MATTE);
   }
+}
+
+// Capa de nieve sobre la parte de arriba de cada cono del pino
+function snowCap(g, t, y0, y1, r) {
+  const h = y1 - y0, start = y1 - h * 0.45;
+  frustumY(g, t.x, t.y, start, y1 + 0.5, r * 0.45 * 1.12, 0, '#eef3f8', M.MATTE);
 }

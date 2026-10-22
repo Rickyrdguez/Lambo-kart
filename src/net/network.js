@@ -10,13 +10,13 @@
 //  - El anfitrión simula la IA, las cajas, los plátanos y la llegada, y envía el mundo ~15 veces/s.
 //
 // Mensajes del servidor: welcome, lobby, taken, noroom, full, closed.
-// Mensajes entre jugadores: hello, start, car, world, item, spin, banana.
+// Mensajes entre jugadores: hello, map, start, car, world, item, spin, banana.
 import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS } from '../config.js';
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
 import { me, owned } from '../game/cars.js';
 import { hitBanana } from '../game/items.js';
-import { startRace, showMenuScene } from '../game/session.js';
+import { startRace, showMenuScene, session } from '../game/session.js';
 import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin letras que se confunden (O/0, I/1)
@@ -88,9 +88,15 @@ export function leaveGame(msg = '') {
   setStatus(msg, !!msg);
 }
 
+// El anfitrión avisa del circuito elegido (también cuando entra alguien nuevo a la sala)
+export function shareMapChoice() {
+  if (isHost()) send({ t: 'map', choice: session.mapChoice });
+}
+
 const handlers = {
-  lobby: m => { net.lobby = m.players; dropMissingPlayers(); renderLobby(); },
-  start: m => startRace(m.humans),
+  lobby: m => { net.lobby = m.players; dropMissingPlayers(); renderLobby(); shareMapChoice(); },
+  map: m => { if (!isHost()) { session.mapChoice = m.choice; renderLobby(); } },
+  start: m => startRace(m.humans, m.map),
   car: m => { if (net.inRace) applyRemote(game.cars[m.id], m.s); },
   world: m => { if (net.inRace && !isHost()) applyWorld(m); },
   item: m => { if (m.id === net.myId) me().item = m.item; },
@@ -109,7 +115,7 @@ function dropMissingPlayers() {
 function carState(c) {
   return {
     id: c.id, x: +c.x.toFixed(1), y: +c.y.toFixed(1), angle: +c.angle.toFixed(3), speed: +c.speed.toFixed(2),
-    lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)),
+    z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)),
     done: c.done, item: c.item
   };
 }
@@ -145,9 +151,12 @@ export function followNet(c, dt) {
   if (!n) return;
   n.x += Math.cos(n.angle) * n.speed * dt;
   n.y += Math.sin(n.angle) * n.speed * dt;
+  if (n.z > 0) { n.vz -= 0.12 * dt; n.z = Math.max(0, n.z + n.vz * dt); } // sigue cayendo si va en el aire
   c.x += (n.x - c.x) * 0.3;
   c.y += (n.y - c.y) * 0.3;
+  c.z += (n.z - c.z) * 0.3;
   c.angle += angDiff(n.angle, c.angle) * 0.3;
+  c.pitch += (n.pitch - c.pitch) * 0.3;
   c.speed = n.speed;
 }
 

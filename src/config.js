@@ -1,5 +1,4 @@
 // Ajustes del juego. Todo lo que quieras "tunear" está aquí.
-import { norm3 } from './core/math.js';
 
 // ---- Carrera ----
 export const LAPS = 3;
@@ -18,11 +17,9 @@ export const FOV_DEG = 72;   // campo de visión horizontal (se abre un poco con
 export const CAM_DIST = 170; // distancia detrás del coche
 export const CAM_H = 70;     // altura de la cámara
 
-// ---- Luz y sombras ----
-export const SUN = norm3([-0.55, 0.6, -0.58]); // dirección hacia el sol
-export const SUN_COL = [2.6, 2.4, 2.1];        // color e intensidad del sol
-export const SHADOW_SIZE = 2048;               // resolución del mapa de sombras
-export const SHADOW_RANGE = 900;               // zona con sombras alrededor del jugador
+// ---- Sombras (la luz y los colores de cada circuito están en game/maps.js) ----
+export const SHADOW_SIZE = 2048;  // resolución del mapa de sombras
+export const SHADOW_RANGE = 900;  // zona con sombras alrededor del jugador
 
 // ---- Red ----
 // Servidor de reenvío (carpeta server/, publicado en Cloudflare Workers)

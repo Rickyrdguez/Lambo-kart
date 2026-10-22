@@ -28,10 +28,11 @@ export function lookAt(eye, target, up) {
 }
 
 // Coloca un modelo (x delante, y arriba, z derecha) en el mapa 2D del juego:
-// (x, y) del mapa pasan a ser (X, Z) en 3D y "angle" gira alrededor del eje vertical.
-export function modelMatrix(x, y, angle, height = 0) {
-  const c = Math.cos(angle), s = Math.sin(angle);
-  return new Float32Array([c, 0, s, 0, 0, 1, 0, 0, -s, 0, c, 0, x, height, y, 1]);
+// (x, y) del mapa pasan a ser (X, Z) en 3D, "angle" gira alrededor del eje vertical
+// y "pitch" levanta o baja el morro (rampas y saltos).
+export function modelMatrix(x, y, angle, height = 0, pitch = 0) {
+  const c = Math.cos(angle), s = Math.sin(angle), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  return new Float32Array([c * cp, sp, s * cp, 0, -c * sp, cp, -s * sp, 0, -s, 0, c, 0, x, height, y, 1]);
 }
 
 // w = 1 para puntos, w = 0 para direcciones (normales)

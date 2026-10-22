@@ -1,15 +1,17 @@
-// Menú HTML: jugar solo, iniciar partida, unirse y sala de espera.
+// Menú HTML: jugar solo (eligiendo circuito), iniciar partida, unirse y sala de espera.
 import { PLAYER_COLORS } from '../config.js';
-import { net, isHost, createGame, joinGame, leaveGame } from '../net/network.js';
-import { hostStart } from '../game/session.js';
+import { MAPS, RANDOM_MAP } from '../game/maps.js';
+import { splinePoints, computeBounds } from '../game/track.js';
+import { hostStart, session } from '../game/session.js';
+import { net, isHost, createGame, joinGame, leaveGame, shareMapChoice } from '../net/network.js';
 
 const $ = id => document.getElementById(id);
-const SCREENS = ['scr-main', 'scr-join', 'scr-lobby'];
+const SCREENS = ['scr-main', 'scr-maps', 'scr-join', 'scr-lobby'];
 
 export function showScreen(id) {
   $('ui').classList.remove('hidden');
   SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id));
-  $('name-row').classList.toggle('hidden', id === 'scr-lobby');
+  $('name-row').classList.toggle('hidden', id !== 'scr-main' && id !== 'scr-join');
 }
 
 export function hideUI() {
@@ -25,7 +27,60 @@ export function setStatus(text, error = false) {
 export const cleanName = n => String(n || '').trim().slice(0, 14);
 export const playerName = () => cleanName($('name').value) || 'Jugador';
 const shareLink = () => location.origin + location.pathname + '#' + net.code;
+const mapName = id => id === RANDOM_MAP ? 'Aleatorio' : MAPS.find(m => m.id === id).name;
 
+// ================== Elegir circuito ==================
+// Tarjetas con el dibujo de cada circuito, más una de "Aleatorio"
+function renderMapCards(container, selected, onPick, compact = false) {
+  container.innerHTML = '';
+  [...MAPS.map(m => m.id), RANDOM_MAP].forEach(id => {
+    const card = document.createElement('button'), title = document.createElement('strong');
+    card.className = 'map-card' + (id === selected ? ' selected' : '');
+    title.textContent = mapName(id);
+    card.append(mapPreview(id), title);
+    if (!compact) {
+      const sub = document.createElement('small');
+      sub.textContent = id === RANDOM_MAP ? 'Un circuito al azar en cada carrera' : MAPS.find(m => m.id === id).subtitle;
+      card.append(sub);
+    }
+    card.onclick = () => onPick(id);
+    container.append(card);
+  });
+}
+
+// Miniatura del trazado (con las rampas en amarillo)
+function mapPreview(id) {
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d'), w = 160, h = 100;
+  cv.width = w; cv.height = h;
+  if (id === RANDOM_MAP) {
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, MAPS[0].theme.preview); g.addColorStop(1, MAPS[MAPS.length - 1].theme.preview);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.font = '44px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🎲', w / 2, h / 2 + 2);
+    return cv;
+  }
+  const map = MAPS.find(m => m.id === id), pts = splinePoints(map.points), b = computeBounds(pts);
+  const s = Math.min((w - 24) / (b.x1 - b.x0), (h - 20) / (b.y1 - b.y0));
+  const px = x => (w - (b.x1 - b.x0) * s) / 2 + (x - b.x0) * s, py = y => (h - (b.y1 - b.y0) * s) / 2 + (y - b.y0) * s;
+  ctx.fillStyle = map.theme.preview; ctx.fillRect(0, 0, w, h);
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(px(p.x), py(p.y)) : ctx.moveTo(px(p.x), py(p.y)));
+  ctx.closePath();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#2b2c31'; ctx.lineWidth = 7; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#ffc400';
+  map.ramps.forEach(seg => { ctx.beginPath(); ctx.arc(px(pts[seg].x), py(pts[seg].y), 4, 0, Math.PI * 2); ctx.fill(); });
+  return cv;
+}
+
+function showMapPicker() {
+  renderMapCards($('map-list'), session.mapChoice, id => { session.mapChoice = id; hostStart(); });
+  showScreen('scr-maps');
+}
+
+// ================== Sala de espera ==================
 export function showLobby() {
   showScreen('scr-lobby');
   const host = isHost();
@@ -49,8 +104,25 @@ export function renderLobby() {
     list.append(li);
   });
   $('player-count').textContent = `(${net.lobby.length}/4)`;
+  renderLobbyMap();
 }
 
+// El anfitrión elige el circuito; los invitados solo ven cuál está elegido
+function renderLobbyMap() {
+  const host = isHost();
+  $('lobby-map-pick').classList.toggle('hidden', !host);
+  $('lobby-map').classList.toggle('hidden', host);
+  $('lobby-map').textContent = `Circuito: ${mapName(session.mapChoice)}`;
+  if (host) {
+    renderMapCards($('lobby-maps'), session.mapChoice, id => {
+      session.mapChoice = id;
+      shareMapChoice();
+      renderLobbyMap();
+    }, true);
+  }
+}
+
+// ================== Utilidades ==================
 async function copyText(text, btn) {
   try { await navigator.clipboard.writeText(text); }
   catch { $('link').select(); document.execCommand('copy'); }
@@ -66,7 +138,7 @@ function saveName() {
 export function initMenu() {
   try { $('name').value = localStorage.getItem('lamboName') || ''; } catch {}
   $('name').addEventListener('change', saveName);
-  $('btn-solo').onclick = () => { saveName(); hostStart(); };
+  $('btn-solo').onclick = () => { saveName(); setStatus(''); showMapPicker(); };
   $('btn-create').onclick = () => { saveName(); createGame(); };
   $('btn-join').onclick = () => { setStatus(''); showScreen('scr-join'); $('code').focus(); };
   $('btn-join-go').onclick = () => { saveName(); joinGame($('code').value); };

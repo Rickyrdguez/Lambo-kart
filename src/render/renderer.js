@@ -1,8 +1,9 @@
 // Motor de render WebGL2: compila shaders, sube la geometría y dibuja cada fotograma
 // en tres pasadas: sombras -> cielo -> escena.
-import { SUN, SUN_COL, SHADOW_SIZE } from '../config.js';
+import { SHADOW_SIZE } from '../config.js';
 import { modelMatrix, IDENTITY } from '../core/mat4.js';
 import { game } from '../game/state.js';
+import { track } from '../game/track.js';
 import { cameraView, lightMatrix } from './camera.js';
 import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
@@ -42,9 +43,9 @@ function loc(p, name) {
 }
 
 function upload(data) {
-  const vao = gl.createVertexArray();
+  const vao = gl.createVertexArray(), buf = gl.createBuffer();
   gl.bindVertexArray(vao);
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
   let off = 0;
   [3, 3, 3, 2, 1].forEach((size, i) => { // posición, normal, color, uv, material
@@ -53,7 +54,13 @@ function upload(data) {
     off += size * 4;
   });
   gl.bindVertexArray(null);
-  return { vao, count: data.length / FLOATS_PER_VERTEX };
+  return { vao, buf, count: data.length / FLOATS_PER_VERTEX };
+}
+
+function release(mesh) {
+  if (!mesh) return;
+  gl.deleteBuffer(mesh.buf);
+  gl.deleteVertexArray(mesh.vao);
 }
 
 function makeShadowMap() {
@@ -75,19 +82,26 @@ function makeShadowMap() {
   return { tex, fbo };
 }
 
-// Llamar después de construir la pista
+// Llamar después de construir la primera pista
 export function initRenderer() {
   progMain = program(MAIN_VS, MAIN_FS);
   progShadow = program(SHADOW_VS, SHADOW_FS);
   progSky = program(SKY_VS, SKY_FS);
   shadowMap = makeShadowMap();
   emptyVao = gl.createVertexArray();
-  meshes.world = upload(buildWorld());
-  meshes.props = upload(buildProps());
+  loadWorld();
   meshes.box = upload(buildItemBox());
   meshes.banana = upload(buildBanana());
   meshes.flames = [upload(buildFlame(18)), upload(buildFlame(24))];
   meshes.blob = upload(buildBlob());
+}
+
+// Vuelve a generar el escenario del circuito actual (al cambiar de mapa)
+export function loadWorld() {
+  release(meshes.world);
+  release(meshes.props);
+  meshes.world = upload(buildWorld());
+  meshes.props = upload(buildProps());
 }
 
 // Un modelo por tipo y color de coche, creado la primera vez que se necesita
@@ -104,7 +118,8 @@ function drawMesh(prog, mesh, model) {
   gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
 }
 
-const carModel = c => modelMatrix(c.x, c.y, c.angle);
+const carModel = c => modelMatrix(c.x, c.y, c.angle, c.z, c.pitch);
+const groundModel = c => modelMatrix(c.x, c.y, c.angle); // la sombra de contacto se queda en el suelo
 
 // Todo lo que proyecta sombra
 function drawCasters(prog, t) {
@@ -116,9 +131,13 @@ function drawCasters(prog, t) {
   game.bananas.forEach(b => drawMesh(prog, meshes.banana, modelMatrix(b.x, b.y, 0)));
 }
 
+// Luz y cielo del circuito actual
 function setLight(prog, t) {
-  gl.uniform3fv(loc(prog, 'uSun'), SUN);
-  gl.uniform3fv(loc(prog, 'uSunCol'), SUN_COL);
+  const th = track.map.theme;
+  gl.uniform3fv(loc(prog, 'uSun'), th.sun);
+  gl.uniform3fv(loc(prog, 'uSunCol'), th.sunCol);
+  gl.uniform3fv(loc(prog, 'uHorizon'), th.horizon);
+  gl.uniform3fv(loc(prog, 'uZenith'), th.zenith);
   gl.uniform1f(loc(prog, 'uTime'), t);
 }
 
@@ -146,6 +165,7 @@ function skyPass(v, t) {
   gl.uniform3fv(loc(progSky, 'uRight'), v.right);
   gl.uniform3fv(loc(progSky, 'uUp'), v.up);
   gl.uniform2fv(loc(progSky, 'uTan'), v.tan);
+  gl.uniform1f(loc(progSky, 'uClouds'), track.map.theme.clouds);
   gl.bindVertexArray(emptyVao);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
@@ -158,6 +178,9 @@ function mainPass(v, lightVP, t) {
   gl.uniformMatrix4fv(loc(progMain, 'uVP'), false, v.VP);
   gl.uniformMatrix4fv(loc(progMain, 'uLightVP'), false, lightVP);
   gl.uniform3fv(loc(progMain, 'uCam'), v.eye);
+  const th = track.map.theme;
+  ['uGroundA', 'uGroundB', 'uGroundC'].forEach((name, i) => gl.uniform3fv(loc(progMain, name), th.ground[i]));
+  gl.uniform1f(loc(progMain, 'uFog'), th.fog);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, shadowMap.tex);
   gl.uniform1i(loc(progMain, 'uShadow'), 0);
@@ -173,7 +196,7 @@ function drawBlobs() {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
-  game.cars.forEach(c => drawMesh(progMain, meshes.blob, carModel(c)));
+  game.cars.forEach(c => drawMesh(progMain, meshes.blob, groundModel(c)));
   gl.depthMask(true);
   gl.disable(gl.BLEND);
 }

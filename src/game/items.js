@@ -24,7 +24,7 @@ export function makeBoxes() {
 export function updateBoxes(dt) {
   game.boxes.forEach(b => {
     if (b.t > 0) { b.t -= dt; return; }
-    const c = game.cars.find(c => dist(b, c) < 32);
+    const c = game.cars.find(c => dist(b, c) < 32 && c.z < 35); // las cajas flotan a media altura
     if (!c) return;
     b.t = BOX_RESPAWN;
     if (c.item) return;
@@ -50,7 +50,7 @@ export function hitBanana(c) {
 
 export function updateBananas() {
   for (let i = game.bananas.length - 1; i >= 0; i--) {
-    const hit = game.cars.find(c => dist(game.bananas[i], c) < 26);
+    const hit = game.cars.find(c => dist(game.bananas[i], c) < 26 && c.z < 6); // en el aire no se pisan
     if (!hit) continue;
     if (owned(hit)) hitBanana(hit);
     else send({ t: 'spin', id: hit.id });
