@@ -24,7 +24,7 @@ export function setStatus(text, error = false) {
 
 export const cleanName = n => String(n || '').trim().slice(0, 14);
 export const playerName = () => cleanName($('name').value) || 'Jugador';
-const shareLink = () => location.href.split('#')[0] + '#' + net.code;
+const shareLink = () => location.origin + location.pathname + '#' + net.code;
 
 export function showLobby() {
   showScreen('scr-lobby');
