@@ -1,5 +1,5 @@
 // Punto de entrada: prepara todo y arranca el bucle del juego.
-import { IS_TOUCH } from './config.js';
+import { MAX_DPR } from './config.js';
 import { game } from './game/state.js';
 import { buildTrack } from './game/track.js';
 import { MAPS } from './game/maps.js';
@@ -10,14 +10,14 @@ import { bindKeyboard } from './game/input.js';
 import { hostStart, showMenuScene } from './game/session.js';
 import { canvas, gl, initRenderer, render } from './render/renderer.js';
 import { updateCamera } from './render/camera.js';
-import { quality, detectSoftware, adaptQuality } from './render/quality.js';
+import { quality, detectSoftware, adaptQuality, setMapQuality, onQualityChange } from './render/quality.js';
 import { hudCanvas, renderHUD, showMessage } from './ui/hud.js';
 import { initMenu, setStatus } from './ui/menu.js';
 import { initTouch, updateTouch } from './ui/touch.js';
 import { isHost, leaveGame, netTick } from './net/network.js';
 
 function resize() {
-  const dpr = Math.min(devicePixelRatio || 1, IS_TOUCH ? 1 : 1.5) * quality.scale; // limitado para no castigar la GPU
+  const dpr = Math.min(devicePixelRatio || 1, MAX_DPR) * quality.scale;
   canvas.width = innerWidth * dpr | 0;
   canvas.height = innerHeight * dpr | 0;
   hudCanvas.width = innerWidth;
@@ -55,6 +55,8 @@ function boot() {
     return;
   }
   detectSoftware();
+  onQualityChange(resize);
+  setMapQuality(MAPS[0]);
   resize();
   addEventListener('resize', resize);
   buildTrack(MAPS[0]);

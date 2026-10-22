@@ -1,12 +1,17 @@
-// Calidad gráfica automática: si el juego va lento, baja la resolución; si va sobrado, la sube.
+// Calidad gráfica automática: si el juego va lento, baja la resolución; si va sobrado, la sube
+// hasta el máximo del circuito (en móvil, los circuitos ligeros permiten más resolución).
 // También detecta si el navegador está dibujando sin tarjeta gráfica (por software).
+import { IS_TOUCH } from '../config.js';
 import { gl } from './renderer.js';
 
 const MIN_SCALE = 0.4, STEP = 0.1;
 const SLOW_MS = 22, FAST_MS = 18; // tiempo entre fotogramas (60 fps = 16,7 ms)
 
-export const quality = { scale: 1, software: false };
-let avg = 16.7, frames = 0, wait = 90;
+export const quality = { scale: 1, max: 1, software: false };
+let avg = 16.7, frames = 0, wait = 90, onChange = () => {};
+
+// Función a llamar cuando cambia la escala (para redimensionar el lienzo)
+export function onQualityChange(fn) { onChange = fn; }
 
 export function detectSoftware() {
   const ext = gl.getExtension('WEBGL_debug_renderer_info');
@@ -14,6 +19,15 @@ export function detectSoftware() {
   quality.software = /swiftshader|basic render|llvmpipe|software/i.test(name);
   if (quality.software) quality.scale = 0.5;
   return quality.software;
+}
+
+// Al cargar un circuito se empieza en su calidad máxima (la adaptación la bajará si hace falta)
+export function setMapQuality(map) {
+  if (quality.software) return;
+  quality.max = IS_TOUCH ? map.mobileQuality ?? 0.8 : 1;
+  quality.scale = quality.max;
+  avg = 16.7; frames = 0; wait = 90;
+  onChange();
 }
 
 // Llamar cada fotograma con los ms que han pasado. Devuelve true si ha cambiado la escala.
@@ -26,8 +40,8 @@ export function adaptQuality(frameMs) {
     frames = 0; wait = 90;
     return true;
   }
-  if (avg < FAST_MS && quality.scale < 1) {
-    quality.scale = +(quality.scale + STEP).toFixed(2);
+  if (avg < FAST_MS && quality.scale < quality.max) {
+    quality.scale = +Math.min(quality.max, quality.scale + STEP).toFixed(2);
     frames = 0; wait = 600; // tras subir, espera más antes de volver a probar
     return true;
   }

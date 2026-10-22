@@ -3,6 +3,7 @@
 // ---- Dispositivo ----
 // Pantallas táctiles (móvil, tablet): controles en pantalla y gráficos algo más ligeros
 export const IS_TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+export const MAX_DPR = IS_TOUCH ? 2 : 1.5; // resolución máxima respecto a la pantalla (limitada para no castigar la GPU)
 
 // ---- Carrera ----
 export const LAPS = 3;

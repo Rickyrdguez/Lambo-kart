@@ -2,6 +2,8 @@
 //   points: puntos de control por los que pasa la pista (se suavizan con una curva)
 //   ramps:  segmentos de la pista donde hay una rampa de salto (mejor en rectas)
 //   theme:  colores, luz, cielo, árboles y montañas
+//   mobileQuality: resolución máxima en móvil (1 = la más alta). Los circuitos más
+//                  sencillos de dibujar pueden permitirse más calidad.
 import { norm3 } from '../core/math.js';
 
 export const MAPS = [
@@ -9,6 +11,7 @@ export const MAPS = [
     id: 'valle',
     name: 'Valle Verde',
     subtitle: 'Prados, pinos y una rampa',
+    mobileQuality: 1,
     points: [[0, 0], [1200, 0], [1800, 300], [1900, 900], [1500, 1300], [1000, 1100],
              [600, 1400], [0, 1500], [-500, 1100], [-400, 500], [-700, 200]],
     ramps: [22],
@@ -31,6 +34,7 @@ export const MAPS = [
     id: 'nieve',
     name: 'Pico Nevado',
     subtitle: 'Nieve, curvas en S y dos rampas',
+    mobileQuality: 0.85,
     points: [[0, 0], [1400, 0], [1700, 250], [1500, 600], [900, 700], [700, 1000], [1000, 1300],
              [1600, 1300], [1900, 1600], [1500, 1950], [400, 1900], [-200, 1500], [-100, 900], [-400, 400]],
     ramps: [24, 378],
@@ -53,6 +57,7 @@ export const MAPS = [
     id: 'isla',
     name: 'Isla Tropical',
     subtitle: 'Muelle, salto sobre el mar y atajo',
+    mobileQuality: 0.7,                             // mar animado y muchas palmeras: más pesado
     points: [[0, 0], [1300, 0], [1850, 300], [1950, 900], [1900, 1500], [1550, 1950], [900, 2050],
              [250, 2000], [-300, 1650], [150, 1300], [700, 1250], [650, 750], [150, 650], [-350, 400]],
     ramps: [228],                                   // salto sobre la cala

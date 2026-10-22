@@ -5,6 +5,7 @@ import { getMap, resolveMap, RANDOM_MAP } from './maps.js';
 import { track, buildTrack } from './track.js';
 import { snapCamera } from '../render/camera.js';
 import { loadWorld } from '../render/renderer.js';
+import { setMapQuality } from '../render/quality.js';
 import { net, send } from '../net/network.js';
 import { hideUI, playerName } from '../ui/menu.js';
 
@@ -16,6 +17,7 @@ export function loadMap(id) {
   if (track.map && track.map.id === id) return;
   buildTrack(getMap(id));
   loadWorld();
+  setMapQuality(track.map);
 }
 
 export function startRace(humans, mapId) {

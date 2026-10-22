@@ -61,6 +61,7 @@ Los circuitos con `island` en su definición no tienen un suelo infinito: tienen
 ## Calidad gráfica automática ([`render/quality.js`](../src/render/quality.js))
 
 - **Resolución adaptativa**: se mide el tiempo entre fotogramas. Si va lento (más de 22 ms de media), se baja la resolución de dibujo un 10 %, hasta un mínimo del 40 %. Si va sobrado, se vuelve a subir. Los menús y el marcador mantienen siempre su nitidez porque van en otra capa.
+- **Calidad por circuito en móvil**: cada circuito tiene un `mobileQuality` en [`game/maps.js`](../src/game/maps.js). Es la resolución máxima en móvil, sobre un tope de 2× la densidad de la pantalla. Los circuitos ligeros, como *Valle Verde*, se ven a 2×, y los pesados, como *Isla Tropical* con el mar y las palmeras, empiezan más bajos. Al cargar un circuito se empieza en su máximo y la adaptación lo baja si el móvil no puede.
 - **Detección de dibujo por software**: si el navegador no está usando la tarjeta gráfica (por ejemplo, *Microsoft Basic Render Driver* o *SwiftShader*), se empieza a media resolución y el menú avisa de cómo activar la aceleración por hardware.
 
 ## Rampas y saltos
