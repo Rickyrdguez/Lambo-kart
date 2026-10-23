@@ -17,7 +17,7 @@ export const ITEMS = ['turbo', 'banana', 'coco', 'hielo'];
 const COCO_SPEED = 17;   // algo más rápido que un coche con turbo
 const COCO_LIFE = 300;   // fotogramas antes de desaparecer si no da a nadie
 const COCO_TURN = 0.18;  // cuánto corrige el rumbo hacia su objetivo por fotograma
-const ICE_TIME = 180;    // el hielo dura 3 segundos en la pista
+const ICE_TIME = 420;    // el hielo dura 7 segundos en la pista
 const ICE_LEN = 60;      // largo de la placa de hielo (de ancho ocupa toda la carretera)
 const ICE_GAP = 60;      // separación entre la parte de atrás del coche y el hielo
 

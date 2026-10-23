@@ -152,15 +152,16 @@ function saveName() {
   try { localStorage.setItem('lamboName', playerName()); } catch {}
 }
 
-// Deslizador de sensibilidad del giro (se guarda en el navegador)
+// Deslizador de sensibilidad del giro (se guarda en el navegador; la clave cambió al pasar
+// el valor por defecto a 85, para que todos empiecen con el nuevo)
 function initSensitivity() {
   let saved = null;
-  try { saved = localStorage.getItem('lamboSens'); } catch {}
+  try { saved = localStorage.getItem('lamboSens85'); } catch {}
   if (saved) $('sens').value = saved;
   const apply = () => {
     settings.sensitivity = $('sens').value / 100;
     $('sens-value').textContent = $('sens').value + '%';
-    try { localStorage.setItem('lamboSens', $('sens').value); } catch {}
+    try { localStorage.setItem('lamboSens85', $('sens').value); } catch {}
   };
   $('sens').addEventListener('input', apply);
   apply();

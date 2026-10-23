@@ -8,7 +8,7 @@ const STEER_IN = 0.08;   // cuánto gira el volante por fotograma al mantener la
 const STEER_OUT = 0.25;  // cuánto vuelve al centro por fotograma al soltar
 
 // sensitivity: multiplica el giro del jugador (lo elige él en el menú; 1 = como la IA)
-export const settings = { sensitivity: 0.8 };
+export const settings = { sensitivity: 0.85 };
 let steer = 0;
 
 // El volante no salta de golpe: un toque corto hace una corrección pequeña y

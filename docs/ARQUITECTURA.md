@@ -114,7 +114,7 @@ Están en [`game/items.js`](../src/game/items.js). Cada caja da uno al azar:
   - Si el objetivo está lejos, sigue la pista apuntando unos segmentos por delante; cuando está cerca, va directo a por él.
   - Le da al primer coche que toque (menos a quien lo lanzó) y le hace el mismo trompo que el plátano.
   - Si nadie lo para, desaparece a los 5 segundos.
-- **Hielo**: una franja corta que ocupa todo el ancho de la carretera, detrás del coche. Dura 3 segundos.
+- **Hielo**: una franja corta que ocupa todo el ancho de la carretera, detrás del coche. Dura 7 segundos.
   - Quien lo pisa patina durante ~1,2 s: no puede girar ni acelerar y sigue en la dirección que llevaba (`slideDir`), mientras el coche colea cada vez menos.
   - Cada ordenador comprueba el hielo con sus propios coches, como las placas de turbo, para que no haya retraso.
 
