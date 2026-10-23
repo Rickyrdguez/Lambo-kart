@@ -15,7 +15,9 @@ import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS, DEFAULT_ROOM, MIN_PLAYERS, MAX_P
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
 import { me, owned, carById } from '../game/cars.js';
+import { track } from '../game/track.js';
 import { hitBanana, throwCoco, dropIce } from '../game/items.js';
+import { loopPose } from '../game/loop.js';
 import { startRace, showMenuScene, returnToLobby, session } from '../game/session.js';
 import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
 
@@ -137,7 +139,7 @@ function carState(c) {
   return {
     id: c.id, x: +c.x.toFixed(1), y: +c.y.toFixed(1), angle: +c.angle.toFixed(3), speed: +c.speed.toFixed(2),
     z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), ground: Math.round(c.ground), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)), slide: Math.max(0, Math.round(c.slide)),
-    done: c.done, item: c.item
+    done: c.done, item: c.item, loop: +c.loop.toFixed(3), lane: Math.round(c.loopLane)
   };
 }
 
@@ -174,6 +176,9 @@ function applyWorld(m) {
 export function followNet(c, dt) {
   const n = c.net;
   if (!n) return;
+  // en el looping se coloca con su vuelta (theta), que se sigue avanzando entre mensajes
+  if (n.loop >= 0) { n.loop += n.speed * dt / track.loop.R; loopPose(c, n.loop, n.lane); c.speed = n.speed; return; }
+  if (c.loop >= 0) { c.loop = -1; c.pitch = 0; } // acaba de salir del looping
   n.x += Math.cos(n.angle) * n.speed * dt;
   n.y += Math.sin(n.angle) * n.speed * dt;
   const floor = n.ground || 0;

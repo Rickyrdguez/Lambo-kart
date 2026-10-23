@@ -20,11 +20,12 @@
 ## ✨ Características
 
 - 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo**, **plátanos**, **cocos** que persiguen al de delante y **hielo** que te hace patinar, marcador de posición, minimapa y clasificación final.
-- 🗺️ **Cuatro circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
+- 🗺️ **Cinco circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
   - *Valle Verde*: prados, pinos y una rampa.
   - *Pico Nevado*: nieve, curvas en S, pinos nevados y dos rampas.
   - *Isla Tropical*: atardecer junto al mar, **muelle de madera** (si te sales, al agua), **salto sobre una cala** con placa de turbo, **atajo de arena** entre palmeras y un arco de roca.
   - *Ciudad Neón*: de noche, trazado en 8 con un **puente** que cruza por encima de la propia pista, **túnel**, **callejón** con conos, rascacielos con ventanas encendidas, neones, farolas, faros, luna y estrellas.
+  - *Parque de Atracciones*: un **looping** con dos placas de turbo antes, una **noria** que gira, una **montaña rusa** que pasa por encima de la pista, una **carpa de circo** como túnel, casetas de feria y globos.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
 - 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
 - 🌍 **Multijugador online de 2 a 7 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación, y el anfitrión elige cuántos caben, como en Among Us. Si sois menos de 4, karts con IA completan la parrilla. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
@@ -103,6 +104,7 @@ flowchart LR
         race[race.js] --> physics[physics.js]
         race --> ai[ai.js]
         race --> items[items.js]
+        race --> loop[loop.js]
         race --> track[track.js]
     end
 

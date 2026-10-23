@@ -2,7 +2,8 @@
 // La pista se guarda como una lista de puntos; el "segmento" de un coche es el índice
 // del punto más cercano y sirve para contar vueltas y posiciones.
 // Aquí también están los elementos especiales: altura de la pista (puentes), rampas, placas de
-// turbo, atajos, arcos, túneles y, en los circuitos de isla, qué es tierra y qué es agua.
+// turbo, atajos, arcos, túneles, el looping y las atracciones del parque y, en los circuitos de
+// isla, qué es tierra y qué es agua.
 import { TRACK_WIDTH } from '../config.js';
 import { angDiff } from '../core/math.js';
 
@@ -15,7 +16,8 @@ const WALL = TRACK_WIDTH / 2 - 14; // en los tramos elevados, el coche no pasa d
 
 export const track = {
   map: null, points: [], N: 0, bounds: null, decor: [],
-  ramps: [], pads: [], shortcuts: [], arches: [], water: [], land: null, tunnel: null
+  ramps: [], pads: [], shortcuts: [], arches: [], water: [], land: null, tunnel: null,
+  loop: null, ferris: null, coaster: null, tent: null
 };
 
 function catmull(p0, p1, p2, p3, t) {
@@ -57,6 +59,12 @@ export function buildTrack(map) {
   track.shortcuts = (map.shortcuts || []).map(s => ({ ...s, a: pointAt(s.from, 0), b: pointAt(s.to, 0) }));
   track.arches = (map.arches || []).map(seg => ({ ...pts[seg], seg }));
   track.water = map.island ? map.island.water : [];
+  track.loop = map.loop ? { ...pts[map.loop.seg], seg: map.loop.seg, R: map.loop.radius } : null;
+  // noria: en un punto del mapa (en las mismas unidades que points), de cara a la pista
+  track.ferris = map.ferris ? { x: map.ferris.at[0] * SCALE, y: map.ferris.at[1] * SCALE, a: map.ferris.angle || 0, R: map.ferris.radius } : null;
+  // montaña rusa: cruza por encima de la pista en el segmento seg, en perpendicular
+  track.coaster = map.coaster ? { ...pointAt(map.coaster.seg, 0), a: pts[map.coaster.seg].a + Math.PI / 2, len: map.coaster.length } : null;
+  track.tent = map.tent || null;
   track.land = map.island ? buildLandMask(map.island.radius) : null;
   track.decor = placeDecor(map.theme);
 }
@@ -271,7 +279,7 @@ function scatter(count, margin, add, extraCheck = () => true) {
 
 function placeDecor(theme) {
   const out = [], trees = theme.trees, extra = theme.decor || {};
-  const free = (x, y, m) => !nearShortcut(x, y, m);
+  const free = (x, y, m) => !nearShortcut(x, y, m) && !nearAttraction(x, y, m);
   scatter(trees.count, 80, (x, y) => out.push({
     type: trees.kind === 'palm' ? 'palm' : 'tree', x, y, s: 0.7 + Math.random() * 0.7,
     pine: Math.random() < (trees.pine ?? 1), dir: Math.random() * Math.PI * 2, lean: 0.4 + Math.random() * 0.8
@@ -286,8 +294,22 @@ function placeDecor(theme) {
     out.push({ type: 'lighthouse', x: p.x, y: p.y });
   }
   if (extra.buildings) placeBuildings(out, extra.buildings);
+  if (extra.stalls) scatter(extra.stalls, 70, (x, y) => out.push({ type: 'stall', x, y, angle: Math.atan2(nearestPoint(x, y).p.y - y, nearestPoint(x, y).p.x - x), color: Math.random() * 4 | 0 }), (d, x, y) => d < 420 && free(x, y, 60));
+  if (extra.balloons) scatter(extra.balloons, 60, (x, y) => out.push({ type: 'balloons', x, y, n: 3 + Math.random() * 4 | 0 }), (d, x, y) => free(x, y, 40));
   if (extra.lamps) placeLamps(out, extra.lamps);
   return out;
+}
+
+// ¿(x, y) está encima de una atracción del parque (noria, montaña rusa o looping)?
+function nearAttraction(x, y, m) {
+  const f = track.ferris, k = track.coaster, L = track.loop;
+  if (f && Math.hypot(x - f.x, y - f.y) < f.R + 60 + m) return true;
+  if (L && Math.hypot(x - L.x, y - L.y) < L.R + 220 + m) return true;
+  if (k) {
+    const dx = x - k.x, dy = y - k.y, along = dx * Math.cos(k.a) + dy * Math.sin(k.a);
+    if (Math.abs(along) < k.len / 2 + 40 && Math.abs(-dx * Math.sin(k.a) + dy * Math.cos(k.a)) < 30 + m) return true;
+  }
+  return false;
 }
 
 // Edificios girados hacia la pista, sin pisarla ni pisarse entre ellos. Los cercanos llevan neón.

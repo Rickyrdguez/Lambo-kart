@@ -89,7 +89,7 @@ export function collideCars() {
   for (let i = 0; i < cars.length; i++) {
     for (let j = i + 1; j < cars.length; j++) {
       const a = cars[i], b = cars[j];
-      if (Math.abs(a.z - b.z) > 15) continue; // uno pasa volando por encima del otro
+      if (Math.abs(a.z - b.z) > 15 || a.loop >= 0 || b.loop >= 0) continue; // uno pasa por encima del otro
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
       if (d === 0 || d >= minDist) continue;
       const push = (minDist - d) / 2, nx = dx / d, ny = dy / d;

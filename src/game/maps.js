@@ -122,6 +122,36 @@ export const MAPS = [
       trees: { kind: 'pine', count: 0 },
       decor: { buildings: 110, lamps: 7 }           // edificios y una farola cada 7 segmentos
     }
+  },
+  {
+    id: 'parque',
+    name: 'Parque de Atracciones',
+    subtitle: 'Looping, noria, montaña rusa y circo',
+    mobileQuality: 0.8,
+    // la recta de arriba (puntos 5 y 6, segmentos 200-239) es totalmente recta: ahí va el looping
+    points: [[0, 0], [800, 0], [1500, 150], [1750, 700], [1350, 1300], [700, 1300], [100, 1300], [-500, 1300],
+             [-1000, 950], [-800, 500], [-1150, 150], [-650, -120]],
+    loop: { seg: 224, radius: 95 },                 // looping vertical (game/loop.js)
+    boostPads: [198, 207],                          // dos placas de turbo seguidas antes del looping
+    boxes: [0.12, 0.62, 0.86],
+    coaster: { seg: 22, length: 1500 },             // montaña rusa que pasa por encima de la recta de salida
+    tent: { from: 362, to: 384 },                   // carpa de circo como túnel
+    ferris: { at: [380, 620], radius: 170 },        // noria (gira) en el centro del parque
+    theme: {
+      preview: '#6cc04a',
+      sun: norm3([0.45, 0.6, -0.55]),
+      sunCol: [2.7, 2.45, 2.1],
+      horizon: [0.66, 0.8, 0.96],
+      zenith: [0.13, 0.36, 0.86],
+      clouds: 0.55,
+      fog: 0.0001,
+      ground: [[0.06, 0.15, 0.025], [0.17, 0.31, 0.06], [0.42, 0.3, 0.18]], // césped y caminos de tierra
+      asphalt: '#403a4c',
+      curbs: ['#f7f7f7', '#e6007e'],
+      mountains: { low: '#4f7a3c', mid: '#6d7a66', snow: '#e9eef2', midAt: 550, snowAt: 950 },
+      trees: { kind: 'pine', count: 110, pine: 0.25 },
+      decor: { stalls: 26, balloons: 34 }           // casetas de feria y globos
+    }
   }
 ];
 

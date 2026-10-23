@@ -26,6 +26,7 @@ Cada circuito es un objeto de datos:
 
 - **`points`**: los puntos de control del trazado.
 - **`ramps`**: los segmentos de la pista donde hay una rampa.
+- Elementos opcionales: placas de turbo, atajos, agua, puente, túnel, looping, noria, montaña rusa, carpa…
 - **`theme`**: la ambientación. Incluye la dirección y el color del sol; los colores del cielo y del suelo; la densidad de la niebla y de las nubes; los colores del asfalto, los bordillos y las montañas; y el tipo y la cantidad de árboles.
 
 Al cambiar de circuito, `loadMap()` ([`game/session.js`](../src/game/session.js)) reconstruye la pista y vuelve a generar el escenario en la GPU. Los colores del tema llegan a los shaders como *uniforms*, así que el mismo shader dibuja la hierba de *Valle Verde* y la nieve de *Pico Nevado*.
@@ -74,6 +75,26 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 - **Farolas y faros**: en vez de luces reales, se dibujan **"charcos de luz"** (círculos bajo las farolas y un cono delante de cada coche) que se **suman** a lo que hay debajo (*additive blending*). Queda casi igual y cuesta muy poco.
 - **Bordes brillantes**: las líneas de la pista son emisivas para que se vea bien por dónde va la carretera.
 - **Ambiente**: `uAmbient` baja la luz ambiente de noche.
+
+## Parque de Atracciones: looping, noria, montaña rusa y carpa
+
+### Un looping en un juego 2D con alturas
+
+La lógica del juego es en 2D (con una altura por coche), así que un looping no se puede "conducir" de verdad: el coche tendría que ir boca abajo. Por eso va **sobre raíles** ([`game/loop.js`](../src/game/loop.js)):
+
+- Al cruzar la entrada, el coche deja de conducir y recorre una circunferencia vertical con un ángulo `loop` (θ) que va de 0 a 2π, a su velocidad. Su posición sale de la circunferencia y su inclinación (`pitch`) es el propio θ, así que arriba va boca abajo.
+- Como en los loopings de verdad, **la salida queda desplazada a un lado**: se entra por la mitad izquierda de la pista y se sale por la derecha. Unos muros de bloques llevan a cada coche a su mitad antes y después.
+- Dos placas de turbo antes de la entrada dan velocidad de sobra. Si alguien llega lento (por ejemplo, tras un coco), el looping le empuja hasta una velocidad mínima.
+- La **cámara** se va a un lado durante el looping y vuelve detrás al salir. Desde detrás, la propia estructura taparía el coche.
+- **En red** se envía θ y el carril. Los demás colocan el coche con la misma función y siguen avanzando θ entre mensajes, así que se ve fluido.
+- El dibujo del looping (carril naranja, estructura, bordes y torres) usa las mismas cuentas que el coche, así que las ruedas siempre van pegadas al carril.
+
+### Atracciones del escenario
+
+- **Noria**: la rueda y las cabinas son mallas aparte. Cada fotograma se dibuja la rueda girada y cada cabina en su sitio del aro, siempre derecha. Las patas en A van con el resto del escenario.
+- **Montaña rusa**: raíles que suben y bajan y cruzan por encima de la recta de salida. Solo hay columnas donde no pisan la pista.
+- **Carpa de circo**: media elipse de rayas sobre la pista, con caras por dentro y por fuera. Como proyecta sombra, dentro está más oscuro.
+- **Casetas de feria y globos**: decorado repartido por el parque, sin tapar las atracciones.
 
 ## Móvil ([`ui/touch.js`](../src/ui/touch.js))
 

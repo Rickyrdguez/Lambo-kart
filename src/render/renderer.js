@@ -7,8 +7,9 @@ import { track } from '../game/track.js';
 import { cameraView, lightMatrix } from './camera.js';
 import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
-import { buildWorld, buildProps, buildLights } from './world.js';
-import { buildLambo, buildKart, buildItemBox, buildBanana, buildCoco, COCO_R, buildIce, buildFlame, buildBlob, buildHeadlights } from './models.js';
+import { buildWorld, buildProps, buildLights, ferrisHub } from './world.js';
+import { buildLambo, buildKart, buildItemBox, buildBanana, buildCoco, COCO_R, buildIce, buildFlame, buildBlob, buildHeadlights,
+         buildFerrisWheel, buildFerrisCabin, FERRIS_CABINS } from './models.js';
 
 const SHADOW_SIZE = IS_TOUCH ? 1024 : SHADOW_SIZE_PC; // sombras más ligeras en móvil
 
@@ -108,6 +109,22 @@ export function loadWorld() {
   meshes.world = upload(buildWorld());
   meshes.props = upload(buildProps());
   meshes.lights = track.map.theme.night ? upload(buildLights()) : null;
+  if (meshes.ferris) [meshes.ferris.wheel, ...meshes.ferris.cabins].forEach(release);
+  const f = track.ferris;
+  meshes.ferris = f ? {
+    wheel: upload(buildFerrisWheel(f.R)),
+    cabins: ['#e53935', '#1e88e5', '#ffd21f', '#43a047'].map(col => upload(buildFerrisCabin(col)))
+  } : null;
+}
+
+// La noria gira despacio; las cabinas cuelgan siempre derechas
+function drawFerris(prog, t) {
+  const f = track.ferris, hub = ferrisHub(f.R), turn = -t * 0.18, c = Math.cos(f.a), s = Math.sin(f.a);
+  drawMesh(prog, meshes.ferris.wheel, modelMatrix(f.x, f.y, f.a, hub, turn));
+  for (let k = 0; k < FERRIS_CABINS; k++) {
+    const a = turn + k / FERRIS_CABINS * Math.PI * 2, along = Math.cos(a) * f.R;
+    drawMesh(prog, meshes.ferris.cabins[k % 4], modelMatrix(f.x + c * along, f.y + s * along, f.a, hub + Math.sin(a) * f.R, 0));
+  }
 }
 
 // Un modelo por tipo y color de coche, creado la primera vez que se necesita
@@ -136,6 +153,7 @@ function drawCasters(prog, t) {
     if (b.t <= 0) drawMesh(prog, meshes.box, modelMatrix(b.x, b.y, t * 1.5, (b.h || 0) + 20 + Math.sin(t * 3) * 3));
   });
   game.bananas.forEach(b => drawMesh(prog, meshes.banana, modelMatrix(b.x, b.y, 0, b.h || 0)));
+  if (meshes.ferris) drawFerris(prog, t);
   game.coconuts.forEach(k => drawMesh(prog, meshes.coco, modelMatrix(k.x, k.y, k.angle, (k.h || 0) + COCO_R, -k.roll)));
 }
 

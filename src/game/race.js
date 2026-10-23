@@ -1,11 +1,12 @@
 // Reglas de la carrera: actualización de cada fotograma, vueltas, posiciones, llegada,
-// placas de turbo, atajos y caídas al agua.
+// placas de turbo, atajos, looping y caídas al agua.
 import { LAPS, TRACK_WIDTH } from '../config.js';
 import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad } from './track.js';
 import { game, setState } from './state.js';
 import { owned } from './cars.js';
 import { physics, updateHeight, collideCars } from './physics.js';
 import { aiInput, rubberBand } from './ai.js';
+import { enterLoop, rideLoop, keepInLoopLane } from './loop.js';
 import { playerInput } from './input.js';
 import { updateBoxes, updateBananas, updateCoconuts, rollCoconuts, updateIces, checkIce, useItem } from './items.js';
 import { net, isHost, followNet } from '../net/network.js';
@@ -33,11 +34,14 @@ export function updateRace(dt) {
 
 function updateCar(c, dt) {
   if (c.sink > 0) return updateSink(c, dt);
+  if (c.loop >= 0) return rideLoop(c, dt); // en el looping no se conduce
   const mine = c.id === net.myId && c.human;
   const inp = mine && !c.done ? playerInput(dt) : aiInput(c); // al terminar, piloto automático
   physics(c, inp, dt);    // moverse
   updateProgress(c);      // en qué parte de la pista está
+  if (enterLoop(c)) return;
   keepOnRoad(c);          // muros de los tramos elevados
+  keepInLoopLane(c);      // muros a la entrada y salida del looping
   updateHeight(c, dt);    // altura: puentes, rampas, saltos
   if (!c.human && c.item && Math.random() < 0.006 * dt) useItem(c);
 }

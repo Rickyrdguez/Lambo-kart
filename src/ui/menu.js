@@ -49,7 +49,7 @@ function renderMapCards(container, selected, onPick, compact = false) {
   });
 }
 
-// Miniatura del trazado (con las rampas en amarillo)
+// Miniatura del trazado (con las rampas en amarillo y el looping en naranja)
 function mapPreview(id) {
   const cv = document.createElement('canvas'), ctx = cv.getContext('2d'), w = 160, h = 100;
   cv.width = w; cv.height = h;
@@ -74,6 +74,11 @@ function mapPreview(id) {
   ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = '#ffc400';
   (map.ramps || []).forEach(seg => { ctx.beginPath(); ctx.arc(px(pts[seg].x), py(pts[seg].y), 4, 0, Math.PI * 2); ctx.fill(); });
+  if (map.loop) {                                   // el looping, como un aro naranja
+    const p = pts[map.loop.seg];
+    ctx.strokeStyle = '#ff7a00'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 6, 0, Math.PI * 2); ctx.stroke();
+  }
   return cv;
 }
 

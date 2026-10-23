@@ -19,6 +19,7 @@ export function makeCar(id, spot, name, color, human) {
     seg, lap: 0, done: false, offTrack: false,
     item: null, boost: 0, spin: 0,
     slide: 0, slideDir: 0,                      // patinando por el hielo y hacia dónde iba
+    loop: -1, loopLane: 0,                      // vuelta dentro del looping (-1 = fuera) y su carril
     base, maxSpeed: base,
     lane: human ? 0 : Math.random() * 80 - 40,  // carril que sigue la IA
     look: 10 + Math.floor(Math.random() * 4),   // cuántos segmentos mira por delante la IA

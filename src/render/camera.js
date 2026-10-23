@@ -4,6 +4,7 @@ import { UP, angDiff, norm3, sub3, cross3 } from '../core/math.js';
 import { mat4Mul, perspective, ortho, lookAt, IDENTITY } from '../core/mat4.js';
 import { me } from '../game/cars.js';
 import { track } from '../game/track.js';
+import { LOOP_LANE } from '../game/loop.js';
 
 // a = ángulo de la cámara (sigue al coche con retraso). VP = última matriz usada
 export const cam = { a: 0, VP: IDENTITY };
@@ -20,14 +21,27 @@ export function cameraView(aspect) {
   const p = me(), fx = Math.cos(cam.a), fz = Math.sin(cam.a);
   // la cámara sube con la carretera (puentes) y, al saltar, algo menos que el coche para que se note
   const ground = p.ground || 0, jump = p.z - ground;
-  const eye = [p.x - fx * CAM_DIST, CAM_H + ground + jump * 0.6, p.y - fz * CAM_DIST];
-  const target = [p.x + fx * 90, 12 + ground + jump * 0.8, p.y + fz * 90];
+  let eye = [p.x - fx * CAM_DIST, CAM_H + ground + jump * 0.6, p.y - fz * CAM_DIST];
+  let target = [p.x + fx * 90, 12 + ground + jump * 0.8, p.y + fz * 90];
+  if (p.loop >= 0) [eye, target] = loopShot(p, eye, target);
   const fovH = (FOV_DEG + Math.min(9, Math.abs(p.speed) * 0.6)) * Math.PI / 180; // más velocidad, más campo
   const tanY = Math.min(Math.tan(fovH / 2) / aspect, Math.tan(0.6));
   const VP = mat4Mul(perspective(2 * Math.atan(tanY), aspect, 4, 16000), lookAt(eye, target, UP));
   const fwd = norm3(sub3(target, eye)), right = norm3(cross3(fwd, UP)), up = cross3(right, fwd);
   cam.VP = VP;
   return { VP, eye, fwd, right, up, tan: [tanY * aspect, tanY] };
+}
+
+// En el looping la cámara se va a un lado para verlo entero (desde detrás, el propio looping
+// taparía el coche) y vuelve detrás al salir
+function loopShot(p, eye, target) {
+  const L = track.loop, ease = t => t * t * (3 - 2 * t);
+  const w = ease(Math.min(1, p.loop / 0.9, (Math.PI * 2 - p.loop) / 0.9));
+  const c = Math.cos(L.a), s = Math.sin(L.a), side = -LOOP_LANE - 330;
+  const sideEye = [L.x - s * side + c * 150, L.h + L.R + 30, L.y + c * side + s * 150];
+  const car = [p.x, p.z + 10, p.y];
+  const mix = (a, b) => a.map((v, i) => v + (b[i] - v) * w);
+  return [mix(eye, sideEye), mix(target, car)];
 }
 
 // La zona con sombras sigue al jugador, un poco por delante. Se ajusta a una rejilla
