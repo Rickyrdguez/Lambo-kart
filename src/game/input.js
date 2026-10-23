@@ -4,10 +4,13 @@ import { clamp } from '../core/math.js';
 export const keys = {};
 
 const BLOCKED = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']; // no mover la página
+
+// Mantener la C: mirar hacia atrás (solo con teclado; en el móvil no hay botón)
+export const lookingBack = () => !!keys.KeyC;
 const STEER_IN = 0.08;   // cuánto gira el volante por fotograma al mantener la tecla (~0,2 s hasta el tope)
 const STEER_OUT = 0.25;  // cuánto vuelve al centro por fotograma al soltar
 
-const SENSITIVITY = 0.85; // el jugador gira un poco menos que la IA (1)
+const SENSITIVITY = 0.9; // el jugador gira un poco menos que la IA (1)
 let steer = 0;
 
 // El volante no salta de golpe: un toque corto hace una corrección pequeña y

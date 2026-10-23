@@ -1,7 +1,7 @@
 // Reglas de la carrera: actualización de cada fotograma, vueltas, posiciones, llegada,
-// placas de turbo, atajos, looping y caídas al agua.
+// placas de turbo, atajos, looping, caídas al agua y caídas al vacío (pista en el cielo).
 import { LAPS, TRACK_WIDTH } from '../config.js';
-import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad } from './track.js';
+import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad, gapAt, FALL_LIMIT } from './track.js';
 import { game, setState } from './state.js';
 import { owned } from './cars.js';
 import { physics, updateHeight, collideCars } from './physics.js';
@@ -43,6 +43,7 @@ function updateCar(c, dt) {
   keepOnRoad(c);          // muros de los tramos elevados
   keepInLoopLane(c);      // muros a la entrada y salida del looping
   updateHeight(c, dt);    // altura: puentes, rampas, saltos
+  if (c.z < FALL_LIMIT) respawn(c); // se ha caído de la pista en el cielo
   if (!c.human && c.item && Math.random() < 0.006 * dt) useItem(c);
 }
 
@@ -80,13 +81,13 @@ function updateSink(c, dt) {
   if (c.sink <= 0) respawn(c);
 }
 
-// Si cayó en la cala reaparece al otro lado; si no, en el centro de la pista donde cayó
+// Si cayó en la cala o en un hueco reaparece al otro lado; si no, en el centro de la pista donde cayó
 function respawn(c) {
-  const range = waterRangeAt(c.seg);
-  const seg = (range && range.type === 'cove' ? range.to + 3 : c.seg) % track.N;
+  const range = waterRangeAt(c.seg) || gapAt(c.seg);
+  const seg = (range && range.type !== 'pier' ? range.to + 3 : c.seg) % track.N;
   const p = pointAt(seg, 0);
   const h = track.points[seg].h;
-  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: h, ground: h, vz: 0, air: 0, pitch: 0, sink: 0 });
+  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: h, ground: h, vz: 0, air: 0, pitch: 0, sink: 0, spin: 0, slide: 0 });
 }
 
 function updateFinish() {

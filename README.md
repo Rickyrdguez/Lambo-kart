@@ -25,7 +25,7 @@
   - *Pico Nevado*: nieve, curvas en S, pinos nevados y dos rampas.
   - *Isla Tropical*: atardecer junto al mar, **muelle de madera** (si te sales, al agua), **salto sobre una cala** con placa de turbo, **atajo de arena** entre palmeras y un arco de roca.
   - *Ciudad Neón*: de noche, trazado en 8 con un **puente** que cruza por encima de la propia pista, **túnel**, **callejón** con conos, rascacielos con ventanas encendidas, neones, farolas, faros, luna y estrellas.
-  - *Parque de Atracciones*: un **looping** con dos placas de turbo antes, una **noria** que gira, una **montaña rusa** que pasa por encima de la pista, una **carpa de circo** como túnel, casetas de feria y globos.
+  - *Carrera en el Cielo*: **pista flotante** sobre las nubes (si te sales donde no hay barreras, caes), trazado en 8 con **puente**, un **looping**, un **rasante** enorme que te hace volar por encima de una curva y un **salto** sobre un hueco.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
 - 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
 - 🌍 **Multijugador online de 2 a 7 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación, y el anfitrión elige cuántos caben, como en Among Us. Si sois menos de 4, karts con IA completan la parrilla. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
@@ -75,6 +75,7 @@
 | `↓` `S` | Frenar / marcha atrás |
 | `←` `→` `A` `D` | Girar |
 | `Espacio` | Usar objeto |
+| `C` (mantener) | Mirar hacia atrás |
 | `Esc` | Online: el anfitrión lleva a todos a la sala de espera (el grupo sigue junto); un invitado sale de la partida. Solo: elegir circuito |
 | `Enter` | Otra carrera con el mismo grupo (anfitrión, al terminar) |
 

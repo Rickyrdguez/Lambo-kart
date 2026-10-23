@@ -124,33 +124,40 @@ export const MAPS = [
     }
   },
   {
-    id: 'parque',
-    name: 'Parque de Atracciones',
-    subtitle: 'Looping, noria, montaña rusa y circo',
-    mobileQuality: 0.8,
-    // la recta de arriba (puntos 5 y 6, segmentos 200-239) es totalmente recta: ahí va el looping
-    points: [[0, 0], [800, 0], [1500, 150], [1750, 700], [1350, 1300], [700, 1300], [100, 1300], [-500, 1300],
-             [-1000, 950], [-800, 500], [-1150, 150], [-650, -120]],
-    loop: { seg: 224, radius: 95 },                 // looping vertical (game/loop.js)
-    boostPads: [198, 207],                          // dos placas de turbo seguidas antes del looping
-    boxes: [0.12, 0.62, 0.86],
-    coaster: { seg: 22, length: 1500 },             // montaña rusa que pasa por encima de la recta de salida
-    tent: { from: 362, to: 384 },                   // carpa de circo como túnel
-    ferris: { at: [380, 620], radius: 170 },        // noria (gira) en el centro del parque
+    id: 'cielo',
+    name: 'Carrera en el Cielo',
+    subtitle: 'Pista flotante, looping, rasante y salto',
+    mobileQuality: 0.85,
+    // Trazado en 8 por encima de las nubes. Las diagonales se cruzan en el centro:
+    // la de los segmentos 160-200 por abajo y la de 480-520 por el puente.
+    points: [[-1725, -300], [-1725, 300], [-1275, 790], [-675, 675], [-225, 225], [225, -225], [675, -675],
+             [1275, -790], [1725, -300], [1725, 300], [1275, 790], [675, 675], [225, 225], [-225, -225],
+             [-675, -675], [-1275, -790]],
+    bridge: { from: 460, up: 485, down: 515, to: 540, height: 110 },
+    loop: { seg: 162, radius: 105 },                // looping vertical (game/loop.js)
+    boostPads: [140, 148, 183],                     // dos antes del looping y una antes del salto
+    ramps: [186],                                   // salto sobre el hueco
+    crest: { from: 291, peak: 305, to: 326, height: 100 }, // rasante: se vuela por encima de la curva
+    sky: {
+      gaps: [{ from: 190, to: 197 }],               // hueco sin pista: hay que saltarlo
+      open: [{ from: 288, to: 345 }]                // sin barreras en el rasante: si fallas la curva, caes
+    },
+    boxes: [0.06, 0.4, 0.62],
     theme: {
-      preview: '#6cc04a',
-      sun: norm3([0.45, 0.6, -0.55]),
-      sunCol: [2.7, 2.45, 2.1],
-      horizon: [0.66, 0.8, 0.96],
-      zenith: [0.13, 0.36, 0.86],
-      clouds: 0.55,
-      fog: 0.0001,
-      ground: [[0.06, 0.15, 0.025], [0.17, 0.31, 0.06], [0.42, 0.3, 0.18]], // césped y caminos de tierra
-      asphalt: '#403a4c',
-      curbs: ['#f7f7f7', '#e6007e'],
-      mountains: { low: '#4f7a3c', mid: '#6d7a66', snow: '#e9eef2', midAt: 550, snowAt: 950 },
-      trees: { kind: 'pine', count: 110, pine: 0.25 },
-      decor: { stalls: 26, balloons: 34 }           // casetas de feria y globos
+      preview: '#7ec3f2',
+      sky: true,
+      sun: norm3([0.5, 0.55, -0.6]),
+      sunCol: [2.5, 2.3, 2.0],
+      horizon: [0.72, 0.84, 0.99],
+      zenith: [0.1, 0.32, 0.88],
+      clouds: 0.45,
+      fog: 0.00005,
+      ground: [[0.5, 0.62, 0.8], [0.98, 0.99, 1], [0.72, 0.8, 0.93]], // no hay suelo (solo se usa en el shader)
+      asphalt: '#3a3f4c',
+      curbs: ['#ffffff', '#29b6f6'],
+      lines: '#7fe3ff',                             // líneas y bordes que brillan
+      trees: { kind: 'pine', count: 0 },
+      decor: { clouds: 70, airBalloons: 12 }        // nubes y globos aerostáticos
     }
   }
 ];

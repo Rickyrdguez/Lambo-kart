@@ -1,8 +1,7 @@
 // Modelos 3D construidos por código: Lamborghini, kart, caja de objeto, plátano, coco y efectos.
 // Coordenadas locales: x hacia delante, y hacia arriba, z hacia la derecha.
 import { UP } from '../core/math.js';
-import { M, loft, box, bothSides, sideZ, cylinderZ, quadN, appendTransformed } from './geometry.js';
-import { modelMatrix } from '../core/mat4.js';
+import { M, loft, box, bothSides, sideZ, cylinderZ, quadN } from './geometry.js';
 
 const GLASS = '#0e1319';
 
@@ -139,36 +138,6 @@ export function buildIce(points, seg, segs, halfWidth) {
     const f = rnd() * (segs - 0.6), s = rnd() * 1.7 - 0.95, w = 0.15 + rnd() * 0.2;
     quad(f, f + 0.3 + rnd() * 0.4, s, s + w, 1.6, rnd() < 0.5 ? [0.85, 0.95, 1] : [0.66, 0.86, 1]);
   }
-  return g;
-}
-
-// ---- Noria ----
-// Rueda en el plano x-y (gira alrededor de z): dos aros con radios y bombillas
-export const FERRIS_CABINS = 8;
-export function buildFerrisWheel(R) {
-  const g = [], parts = 32, chord = 2 * Math.PI * R / parts + 1;
-  const turned = (fn, angle) => { const l = []; fn(l); appendTransformed(g, l, modelMatrix(0, 0, 0, 0, angle)); };
-  bothSides(s => {
-    const z = s * 20;
-    for (let k = 0; k < parts; k++) {
-      turned(l => box(l, R - 3, R + 3, -chord / 2, chord / 2, z - 2, z + 2, '#f2f2f2', M.PAINT), (k + 0.5) / parts * Math.PI * 2);
-      turned(l => box(l, R + 3, R + 6, -2, 2, z - 2.5, z + 2.5, ['#ffd21f', '#ff3b3b', '#3fa7ff'][k % 3], M.EMIT), k / parts * Math.PI * 2);
-    }
-    for (let k = 0; k < FERRIS_CABINS * 2; k++) {
-      turned(l => box(l, 0, R, -1.5, 1.5, z - 1.5, z + 1.5, '#d6d9df', M.CHROME), k / (FERRIS_CABINS * 2) * Math.PI * 2);
-    }
-  });
-  cylinderZ(g, 0, 0, 0, 12, 46, '#e6007e', M.PAINT, 12);                     // buje
-  return g;
-}
-
-// Cabina que cuelga de la rueda (siempre derecha)
-export function buildFerrisCabin(color) {
-  const g = [];
-  box(g, -1, 1, -10, 0, -1, 1, '#555555', M.MATTE);                          // varilla
-  box(g, -12, 12, -34, -10, -13, 13, color, M.PAINT);                        // cabina
-  box(g, -12.5, 12.5, -26, -16, -13.5, 13.5, '#0e1319', M.GLASS);            // ventanas
-  box(g, -14, 14, -11, -7, -15, 15, '#f2f2f2', M.PAINT);                     // techo
   return g;
 }
 

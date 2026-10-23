@@ -3,8 +3,8 @@ import { FOV_DEG, CAM_DIST, CAM_H, SHADOW_RANGE } from '../config.js';
 import { UP, angDiff, norm3, sub3, cross3 } from '../core/math.js';
 import { mat4Mul, perspective, ortho, lookAt, IDENTITY } from '../core/mat4.js';
 import { me } from '../game/cars.js';
-import { track } from '../game/track.js';
-import { LOOP_LANE } from '../game/loop.js';
+import { lookingBack } from '../game/input.js';
+import { track, VOID } from '../game/track.js';
 
 // a = ángulo de la cámara (sigue al coche con retraso). VP = última matriz usada
 export const cam = { a: 0, VP: IDENTITY };
@@ -20,28 +20,35 @@ export function updateCamera(dt) {
 export function cameraView(aspect) {
   const p = me(), fx = Math.cos(cam.a), fz = Math.sin(cam.a);
   // la cámara sube con la carretera (puentes) y, al saltar, algo menos que el coche para que se note
-  const ground = p.ground || 0, jump = p.z - ground;
+  // sin pista debajo (pista en el cielo), la referencia es la altura de la pista o el propio coche si cae
+  const ground = p.ground > VOID ? p.ground || 0 : Math.min(track.points[p.seg].h, p.z), jump = p.z - ground;
   let eye = [p.x - fx * CAM_DIST, CAM_H + ground + jump * 0.6, p.y - fz * CAM_DIST];
   let target = [p.x + fx * 90, 12 + ground + jump * 0.8, p.y + fz * 90];
-  if (p.loop >= 0) [eye, target] = loopShot(p, eye, target);
+  let up3 = UP;
+  if (p.loop >= 0) [eye, target, up3] = loopShot(p);
+  else if (lookingBack()) { // delante del coche, mirando a los que vienen detrás
+    eye = [p.x + fx * CAM_DIST * 0.8, CAM_H * 0.8 + ground + jump * 0.6, p.y + fz * CAM_DIST * 0.8];
+    target = [p.x - fx * 90, 12 + ground + jump * 0.8, p.y - fz * 90];
+  }
   const fovH = (FOV_DEG + Math.min(9, Math.abs(p.speed) * 0.6)) * Math.PI / 180; // más velocidad, más campo
   const tanY = Math.min(Math.tan(fovH / 2) / aspect, Math.tan(0.6));
-  const VP = mat4Mul(perspective(2 * Math.atan(tanY), aspect, 4, 16000), lookAt(eye, target, UP));
-  const fwd = norm3(sub3(target, eye)), right = norm3(cross3(fwd, UP)), up = cross3(right, fwd);
+  const VP = mat4Mul(perspective(2 * Math.atan(tanY), aspect, 4, 16000), lookAt(eye, target, up3));
+  const fwd = norm3(sub3(target, eye)), right = norm3(cross3(fwd, up3)), up = cross3(right, fwd);
   cam.VP = VP;
   return { VP, eye, fwd, right, up, tan: [tanY * aspect, tanY] };
 }
 
-// En el looping la cámara se va a un lado para verlo entero (desde detrás, el propio looping
-// taparía el coche) y vuelve detrás al salir
-function loopShot(p, eye, target) {
-  const L = track.loop, ease = t => t * t * (3 - 2 * t);
-  const w = ease(Math.min(1, p.loop / 0.9, (Math.PI * 2 - p.loop) / 0.9));
-  const c = Math.cos(L.a), s = Math.sin(L.a), side = -LOOP_LANE - 330;
-  const sideEye = [L.x - s * side + c * 150, L.h + L.R + 30, L.y + c * side + s * 150];
-  const car = [p.x, p.z + 10, p.y];
-  const mix = (a, b) => a.map((v, i) => v + (b[i] - v) * w);
-  return [mix(eye, sideEye), mix(target, car)];
+// En el looping la cámara sigue en tercera persona: la misma posición que la normal (detrás y
+// encima del coche) pero girando con él, así que arriba se ve el mundo del revés. El carril del
+// looping solo se dibuja por dentro, así que no tapa al coche.
+function loopShot(p) {
+  const th = p.loop, c = Math.cos(track.loop.a), s = Math.sin(track.loop.a);
+  const fwd = [c * Math.cos(th), Math.sin(th), s * Math.cos(th)];   // hacia donde va el coche
+  const up = [-c * Math.sin(th), Math.cos(th), -s * Math.sin(th)];  // hacia el centro del looping
+  const car = [p.x, p.z, p.y], at = (f, u) => car.map((v, i) => v + fwd[i] * f + up[i] * u);
+  const eye = at(-CAM_DIST, CAM_H);
+  eye[1] = Math.max(eye[1], track.loop.h + 30); // sin meterse por debajo de la pista al subir
+  return [eye, at(90, 12), up];
 }
 
 // La zona con sombras sigue al jugador, un poco por delante. Se ajusta a una rejilla

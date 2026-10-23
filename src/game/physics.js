@@ -13,7 +13,7 @@ const AIR_TURN = 0.3;        // en el aire se gira mucho menos
 const LANDING_BOOST = 25;    // mini-turbo al aterrizar tras un buen salto
 const MIN_JUMP_FOR_BOOST = 15;
 export const SLIDE_TIME = 70; // fotogramas patinando sin control al pisar hielo
-const STICK = 6;             // si el suelo baja menos que esto, el coche lo sigue (cuestas, puentes)
+const LAUNCH = 1.5;          // si el suelo cae más deprisa que el coche en caída libre (más este margen), despega
 
 // inp = { up, down, turn }   dt = fotogramas transcurridos (1 = 60 fps)
 // Mueve el coche en el plano; la altura se ajusta después con updateHeight().
@@ -42,12 +42,14 @@ function drive(c, inp, dt) {
 }
 
 // El coche va pegado al suelo mientras este sube o baja poco a poco (rampas, puentes).
-// Si el suelo desaparece de golpe (final de una rampa), sigue con la velocidad vertical que
-// llevaba y la gravedad lo hace caer. Llamar después de saber en qué segmento está.
+// Si el suelo cae más deprisa de lo que caería el coche volando (final de una rampa, la cima
+// de un rasante, el borde de la pista en el cielo), sigue con la velocidad vertical que llevaba
+// y la gravedad lo hace caer. Llamar después de saber en qué segmento está.
 export function updateHeight(c, dt) {
   const ground = groundAt(c);
   c.ground = ground;
-  if (c.air === 0 && c.z - ground < STICK) {
+  const fly = c.z + c.vz * dt - GRAVITY * dt * dt; // dónde estaría si fuera volando
+  if (c.air === 0 && ground >= fly - LAUNCH) {
     c.vz = (ground - c.z) / Math.max(dt, 0.01); // subir o bajar con la carretera
     c.z = ground;
   } else {

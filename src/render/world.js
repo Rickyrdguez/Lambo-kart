@@ -1,11 +1,11 @@
 // Escenario en 3D: suelo o isla con mar, montañas o rascacielos, asfalto, bordillos, meta,
-// muelle, puente, túnel, rampas, placas de turbo, atajos, arcos, looping, atracciones del parque,
+// muelle, puente, túnel, rampas, placas de turbo, atajos, arcos, looping, pista en el cielo,
 // decorado y luces de noche.
 // Los colores salen del tema del circuito (game/maps.js).
 import { TRACK_WIDTH as W } from '../config.js';
 import { UP, rgb, norm3 } from '../core/math.js';
 import { modelMatrix } from '../core/mat4.js';
-import { track, pointAt, waterRangeAt, inTunnel, inTrench, PARK_WIDTH } from '../game/track.js';
+import { track, pointAt, waterRangeAt, inTunnel, inTrench, inGap, walled, PARK_WIDTH } from '../game/track.js';
 import { M, vtx, tri, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
 import { LOOP_LANE, loopPoint, loopSide, loopLimits } from '../game/loop.js';
 
@@ -17,14 +17,16 @@ const TRENCH_WALL = W / 2 + 18;  // muros de la trinchera (distancia al centro d
 const SIDEWALK = 160;            // aceras a nivel de calle junto a la trinchera
 const TILE = 80;                 // baldosas del suelo cuando hay que hacerle un agujero
 const elevated = i => track.points[i % track.N].h > 1;
-export const ferrisHub = R => R + 30; // altura del eje de la noria
 
 // Suelo, mar, montañas y pista (no proyectan sombra)
 export function buildWorld() {
   const g = [];
-  if (track.land) buildIsland(g); else buildGround(g);
-  if (theme().skyline) buildSkyline(g); else buildMountains(g);
-  buildTrackMesh(g);
+  if (track.sky) buildSkyTrack(g);
+  else {
+    if (track.land) buildIsland(g); else buildGround(g);
+    if (theme().skyline) buildSkyline(g); else buildMountains(g);
+    buildTrackMesh(g);
+  }
   track.pads.forEach(p => buildBoostPad(g, p));
   return g;
 }
@@ -37,12 +39,9 @@ export function buildProps() {
   track.arches.forEach(a => buildArch(g, a));
   track.shortcuts.forEach(s => buildShortcut(g, s));
   track.water.filter(r => r.type === 'pier').forEach(r => buildPierPosts(g, r));
-  buildBridge(g);
+  if (!track.sky) buildBridge(g); // en el cielo la losa ya lleva sus muros
   if (track.tunnel) { buildTrench(g, track.tunnel); buildPark(g, track.tunnel); }
   if (track.loop) { buildLoop(g, track.loop); buildLoopWalls(g, track.loop); }
-  if (track.coaster) buildCoaster(g, track.coaster);
-  if (track.tent) buildTent(g, track.tent);
-  if (track.ferris) buildFerrisBase(g, track.ferris);
   return g;
 }
 
@@ -527,25 +526,34 @@ export function buildLights() {
   return g;
 }
 
-// ================== Parque de atracciones ==================
+// ================== Looping ==================
 const p3 = p => [p.x, p.z, p.y]; // del juego (x, y, altura) a 3D (x, altura, z)
 
-// Looping: carril naranja por dentro, estructura oscura por fuera, bordes de colores y dos torres
-// con un travesaño por encima. Usa las mismas cuentas que el coche (game/loop.js).
+// Looping. El carril naranja es una malla aparte que solo se ve desde dentro (el renderer la
+// dibuja descartando las caras traseras): así la cámara puede ir detrás del coche, fuera del
+// looping, sin que la propia estructura la tape. Usa las mismas cuentas que el coche (game/loop.js).
+const LOOP_STEPS = 72, LOOP_T0 = 0.12, LOOP_T1 = Math.PI * 2 - 0.12;
+const loopAt = (L, th, s, r) => p3(loopPoint(L, th, loopSide(-LOOP_LANE - 5, th) + s, r));
+
+export function buildLoopLane() {
+  const g = [], L = track.loop, w = LOOP_LANE, c = Math.cos(L.a), sn = Math.sin(L.a);
+  for (let k = 0; k < LOOP_STEPS; k++) {
+    const a = LOOP_T0 + (LOOP_T1 - LOOP_T0) * k / LOOP_STEPS, b = LOOP_T0 + (LOOP_T1 - LOOP_T0) * (k + 1) / LOOP_STEPS, m = (a + b) / 2;
+    const n = [-Math.sin(m) * c, Math.cos(m), -Math.sin(m) * sn]; // hacia el centro del looping
+    quadN(g, [loopAt(L, a, -w, L.R + 1), loopAt(L, a, w, L.R + 1), loopAt(L, b, w, L.R + 1), loopAt(L, b, -w, L.R + 1)],
+          [n, n, n, n], rgb(k % 2 ? '#ff7a00' : '#ff8f1f'), M.PAINT);
+  }
+  return g;
+}
+
+// Bordes de colores, dos torres y un travesaño por encima
 function buildLoop(g, L) {
-  const steps = 72, t0 = 0.12, t1 = Math.PI * 2 - 0.12, lin = -LOOP_LANE - 5, w = LOOP_LANE;
-  const at = (th, s, r) => p3(loopPoint(L, th, loopSide(lin, th) + s, r));
-  const c = Math.cos(L.a), sn = Math.sin(L.a), side = [-sn, 0, c];
-  for (let k = 0; k < steps; k++) {
-    const a = t0 + (t1 - t0) * k / steps, b = t0 + (t1 - t0) * (k + 1) / steps, m = (a + b) / 2;
-    const inN = [-Math.sin(m) * c, Math.cos(m), -Math.sin(m) * sn], outN = inN.map(v => -v);
-    quadN(g, [at(a, -w, L.R + 1), at(a, w, L.R + 1), at(b, w, L.R + 1), at(b, -w, L.R + 1)], [inN, inN, inN, inN],
-          rgb(k % 2 ? '#ff7a00' : '#ff8f1f'), M.PAINT);                                            // carril
-    quadN(g, [at(a, -w - 4, L.R + 7), at(b, -w - 4, L.R + 7), at(b, w + 4, L.R + 7), at(a, w + 4, L.R + 7)], [outN, outN, outN, outN],
-          rgb('#30343e'), M.MATTE);                                                                // por fuera
+  const w = LOOP_LANE, side = [-Math.sin(L.a), 0, Math.cos(L.a)], at = (th, s, r) => loopAt(L, th, s, r);
+  for (let k = 0; k < LOOP_STEPS; k++) {
+    const a = LOOP_T0 + (LOOP_T1 - LOOP_T0) * k / LOOP_STEPS, b = LOOP_T0 + (LOOP_T1 - LOOP_T0) * (k + 1) / LOOP_STEPS;
     bothSides(s => {
       const n = side.map(v => v * s), o = s * (w + 4);
-      quadN(g, [at(a, o, L.R + 7), at(b, o, L.R + 7), at(b, o, L.R - 8), at(a, o, L.R - 8)], [n, n, n, n],
+      quadN(g, [at(a, o, L.R + 4), at(b, o, L.R + 4), at(b, o, L.R - 8), at(a, o, L.R - 8)], [n, n, n, n],
             rgb(k % 4 < 2 ? '#ffffff' : '#e6007e'), M.PAINT);                                      // bordes
     });
   }
@@ -568,88 +576,74 @@ function buildLoopWalls(g, L) {
   appendTransformed(g, local, modelMatrix(L.x, L.y, L.a, L.h));
 }
 
-// ¿Este punto (3D) cae encima de alguna parte de la pista?
-const overRoad = q => track.points.some(p => Math.hypot(p.x - q[0], p.y - q[2]) < W / 2 + 30);
+// ================== Carrera en el cielo ==================
+// Pista flotante: losa de asfalto con grosor, neón por debajo y, donde hay protección,
+// barreras de cristal. Sin columnas ni suelo: debajo solo hay cielo y nubes sueltas.
+const SLAB = 14; // grosor de la losa
 
-// Montaña rusa decorativa: dos raíles con traviesas que suben y bajan, sobre columnas.
-// Por encima de la pista va alta para que los coches pasen por debajo.
-function buildCoaster(g, k) {
-  const step = 24, n = Math.ceil(k.len / step), hAt = u => 175 + 70 * Math.cos(u / 160) - 40 * Math.cos(u / 55);
-  const c = Math.cos(k.a), s = Math.sin(k.a), P = (u, o, y) => [k.x + c * u - s * o, y, k.y + s * u + c * o];
-  const DOWN = [0, -1, 0];
-  for (let i = 0; i < n; i++) {
-    const u0 = -k.len / 2 + i * step, u1 = u0 + step, h0 = hAt(u0), h1 = hAt(u1);
-    [-9, 9].forEach(o => {                                                                       // raíles
-      quadN(g, [P(u0, o - 2, h0 + 3), P(u0, o + 2, h0 + 3), P(u1, o + 2, h1 + 3), P(u1, o - 2, h1 + 3)], UP4, rgb('#e53935'), M.PAINT);
-      quadN(g, [P(u0, o - 2, h0), P(u1, o - 2, h1), P(u1, o + 2, h1), P(u0, o + 2, h0)], [DOWN, DOWN, DOWN, DOWN], rgb('#9b1c1c'), M.PAINT);
+function buildSkyTrack(g) {
+  const { asphalt, curbs, lines } = theme(), edge = W / 2 + 16;
+  for (let i = 0; i < track.N; i++) {
+    if (inGap(i)) continue;
+    trackStrip(g, i, 0, 1, -edge, edge, 0.3, asphalt, M.ASPHALT);
+    [0, 0.5].forEach((f, k) => bothSides(s => trackStrip(g, i, f, f + 0.5, ...sideZ(W / 2, edge, s), 0.5, curbs[k], M.MATTE)));
+    bothSides(s => trackStrip(g, i, 0, 1, ...sideZ(W / 2 - 12, W / 2 - 7, s), 0.45, lines, M.EMIT)); // líneas que brillan
+    if (i % 2 === 0) trackStrip(g, i, 0, 0.6, -2.5, 2.5, 0.45, '#f2f2f2', M.MATTE);
+    bothSides(s => {
+      wallQuad(g, i, s * edge, -SLAB, 0.5, '#dfe6f0');                                         // canto de la losa
+      trackStrip(g, i, 0, 1, ...sideZ(edge - 8, edge, s), -SLAB - 0.5, lines, M.EMIT);          // neón por debajo
+      if (walled(i)) glassWall(g, i, s * (W / 2 + 12));
     });
-    quadN(g, [P(u0, -12, h0), P(u0, 12, h0), P(u0 + 5, 12, h0), P(u0 + 5, -12, h0)], UP4, rgb('#5b5f69'), M.MATTE); // traviesa
-    const q = P(u0, 0, 0);
-    if (i % 3 === 0 && !overRoad(q)) box(g, q[0] - 3, q[0] + 3, 0, h0, q[2] - 3, q[2] + 3, '#f2f2f2', M.PAINT); // columnas
+    const under = o => T(i, 0, o, -SLAB), under1 = o => T(i, 1, o, -SLAB), D = [0, -1, 0];
+    quadN(g, [under(-edge), under1(-edge), under1(edge), under(edge)], [D, D, D, D], rgb('#9aa6b8'), M.MATTE); // por debajo
+    if (inGap(i + 1)) slabEnd(g, i + 1, 1);                                                      // borde del hueco
+    if (inGap(i - 1)) slabEnd(g, i, -1);
   }
+  buildStartLine(g);
 }
 
-// Carpa de circo de rayas rojas y blancas por encima de la pista, abierta por los extremos
-function buildTent(g, t) {
-  const slices = 12, R = W / 2 + 40, H = 125;
-  const ring = (i, k) => { const f = Math.PI * k / slices; return T(i, 0, -Math.cos(f) * R, Math.sin(f) * H); };
-  for (let i = t.from; i < t.to; i++) {
-    for (let k = 0; k < slices; k++) {
-      const pts = [ring(i, k), ring(i + 1, k), ring(i + 1, k + 1), ring(i, k + 1)], col = rgb(k % 2 ? '#f5f5f5' : '#d81b2c');
-      let n = normalOf(pts);
-      if (n[1] < 0) n = n.map(v => -v);
-      const m = n.map(v => -v);
-      quadN(g, pts, [n, n, n, n], col, M.MATTE);                                                     // por fuera
-      quadN(g, [pts[0], pts[3], pts[2], pts[1]], [m, m, m, m], col.map(v => v * 0.8), M.MATTE);      // por dentro
-    }
-  }
-  [t.from, t.to].forEach(i => {                                                                     // mástiles con banderín
-    const top = T(i, 0, 0, H);
-    box(g, top[0] - 2, top[0] + 2, top[1] - 4, top[1] + 40, top[2] - 2, top[2] + 2, '#7a5a3a', M.MATTE);
-    box(g, top[0] + 2, top[0] + 22, top[1] + 26, top[1] + 38, top[2] - 1, top[2] + 1, '#ffd21f', M.PAINT);
-  });
+// Barrera de cristal con el borde de arriba brillante
+function glassWall(g, i, o) {
+  const H = 16, pts = [T(i, 0, o, 0.5), T(i, 1, o, 0.5), T(i, 1, o, H), T(i, 0, o, H)];
+  const p = track.points[i], n = [-Math.sin(p.a) * Math.sign(o), 0, Math.cos(p.a) * Math.sign(o)], m = n.map(v => -v);
+  quadN(g, pts, [n, n, n, n], rgb('#3d8fd6'), M.GLASS);
+  quadN(g, [pts[1], pts[0], pts[3], pts[2]], [m, m, m, m], rgb('#3d8fd6'), M.GLASS);
+  trackStrip(g, i, 0, 1, o - 1.5, o + 1.5, H, theme().lines, M.EMIT);
 }
 
-// Patas en A de la noria (la rueda gira: la dibuja el renderer con models.buildFerrisWheel)
-function buildFerrisBase(g, f) {
-  const local = [], hub = ferrisHub(f.R), spread = 0.42, len = hub * Math.hypot(1, spread), tilt = Math.atan(spread);
-  bothSides(s => [-1, 1].forEach(d => {
-    const leg = [];
-    box(leg, -4, 4, 0, len + 6, -4, 4, '#f2f2f2', M.PAINT);
-    appendTransformed(local, leg, modelMatrix(d * hub * spread, s * 26, 0, 0, d * tilt));
-  }));
-  box(local, -6, 6, hub - 6, hub + 6, -30, 30, '#c9ced6', M.CHROME);                              // eje
-  frustumY(local, 0, 0, 0, 5, 70, 70, '#8d8f96', M.MATTE, 14);                                      // base
-  appendTransformed(g, local, modelMatrix(f.x, f.y, f.a));
+// Cara vertical de la losa donde empieza o acaba un hueco
+function slabEnd(g, i, dir) {
+  const edge = W / 2 + 16, p = track.points[i % track.N], n = [Math.cos(p.a) * dir, 0, Math.sin(p.a) * dir];
+  const pts = [T(i, 0, -edge, -SLAB), T(i, 0, edge, -SLAB), T(i, 0, edge, 0.5), T(i, 0, -edge, 0.5)];
+  quadN(g, pts, [n, n, n, n], rgb('#dfe6f0'), M.MATTE);
+  quadN(g, [pts[0], pts[3], pts[2], pts[1]], [n, n, n, n], rgb('#dfe6f0'), M.MATTE);
 }
 
-const STALL_COLORS = ['#e53935', '#1e88e5', '#43a047', '#8e24aa'];
-
-// Caseta de feria con toldo de rayas, mirando a la pista
-function buildStall(g, t) {
-  const local = [], col = STALL_COLORS[t.color];
-  box(local, -14, 14, 0, 26, -22, 22, '#f3e3c3', M.MATTE);                                          // caseta
-  box(local, 14, 15, 10, 22, -16, 16, '#3b2a1a', M.MATTE);                                          // ventanilla
-  for (let k = 0; k < 6; k++) box(local, -16, 24, 26, 30, -24 + k * 8, -16 + k * 8, k % 2 ? '#ffffff' : col, M.PAINT); // toldo
-  box(local, -4, 4, 30, 42, -10, 10, col, M.PAINT);                                                 // cartel
-  appendTransformed(g, local, modelMatrix(t.x, t.y, t.angle));
-}
-
-const BALLOON_COLORS = ['#ff3b3b', '#ffd21f', '#3fa7ff', '#ff6ad5', '#3ddc84', '#ff8a1f'];
-
-// Ramo de globos atados a un poste
-function buildBalloons(g, t) {
-  frustumY(g, t.x, t.y, 0, 30, 1.2, 1, '#9a9a9a', M.MATTE, 5);
+// Nube: unas cuantas bolas blancas de pocas caras
+function buildCloud(g, t) {
   for (let k = 0; k < t.n; k++) {
-    const a = k / t.n * Math.PI * 2, x = t.x + Math.cos(a) * 9, z = t.y + Math.sin(a) * 9, y = 52 + (k % 3) * 9;
-    const col = BALLOON_COLORS[(k + t.n) % BALLOON_COLORS.length];
-    frustumY(g, (t.x + x) / 2, (t.y + z) / 2, 30, y - 8, 0.4, 0.4, '#dddddd', M.MATTE, 4);          // cuerda
-    frustumY(g, x, z, y - 9, y, 2, 8, col, M.PAINT, 8);                                             // globo
-    frustumY(g, x, z, y, y + 9, 8, 3, col, M.PAINT, 8);
+    const a = k / t.n * Math.PI * 2, r = t.s * (26 + (k % 3) * 8);
+    const x = t.x + Math.cos(a) * t.s * 34, z = t.y + Math.sin(a) * t.s * 20, y = t.h + (k % 2) * 10 * t.s;
+    frustumY(g, x, z, y - r * 0.6, y, r * 0.6, r, '#ffffff', M.MATTE, 8);
+    frustumY(g, x, z, y, y + r * 0.8, r, r * 0.3, '#ffffff', M.MATTE, 8);
   }
+}
+
+const BALLOON_COLORS = [['#ff3b3b', '#ffd21f'], ['#3fa7ff', '#ffffff'], ['#ff6ad5', '#7c4dff'], ['#3ddc84', '#ff8a1f']];
+
+// Globo aerostático: tela de franjas, cuerdas y cesta
+function buildAirBalloon(g, t) {
+  const [c0, c1] = BALLOON_COLORS[t.color], s = t.s, y = t.h;
+  const rings = [[0, 10], [14, 30], [34, 44], [58, 48], [80, 40], [96, 22], [104, 0]];
+  for (let k = 0; k < rings.length - 1; k++) {
+    const [y0, r0] = rings[k], [y1, r1] = rings[k + 1];
+    frustumY(g, t.x, t.y, y + y0 * s, y + y1 * s, r0 * s, r1 * s, k % 2 ? c1 : c0, M.PAINT, 12);
+  }
+  bothSides(sx => bothSides(sz => box(g, t.x + sx * 7 * s - 0.5, t.x + sx * 7 * s + 0.5, y - 26 * s, y, t.y + sz * 7 * s - 0.5, t.y + sz * 7 * s + 0.5, '#5d4037', M.MATTE)));
+  box(g, t.x - 9 * s, t.x + 9 * s, y - 40 * s, y - 26 * s, t.y - 9 * s, t.y + 9 * s, '#8d6e4c', M.MATTE); // cesta
 }
 
 const DECOR = {
   tree: buildTree, palm: buildPalm, rock: buildRock, umbrella: buildUmbrella, lighthouse: buildLighthouse,
-  building: buildBuilding, lamp: buildLamp, stall: buildStall, balloons: buildBalloons
+  building: buildBuilding, lamp: buildLamp, cloud: buildCloud, airballoon: buildAirBalloon
 };
