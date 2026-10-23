@@ -13,7 +13,7 @@ import { net, isHost } from '../net/network.js';
 
 const $ = id => document.getElementById(id);
 const DRIVE = [['t-left', 'ArrowLeft'], ['t-right', 'ArrowRight'], ['t-up', 'ArrowUp'], ['t-down', 'ArrowDown']];
-const ITEM_ICONS = { banana: '🍌', turbo: '⚡' };
+const ITEM_ICONS = { banana: '🍌', turbo: '⚡', coco: '🥥', hielo: '🧊' };
 const REACH = 0.8; // un dedo cuenta si está a menos de 0,8 veces el ancho del botón de su centro
 
 // Botón de conducción más cercano a un dedo (con un margen generoso alrededor)

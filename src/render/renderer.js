@@ -1,6 +1,6 @@
 // Motor de render WebGL2: compila shaders, sube la geometría y dibuja cada fotograma
 // en tres pasadas: sombras -> cielo -> escena.
-import { SHADOW_SIZE as SHADOW_SIZE_PC, IS_TOUCH } from '../config.js';
+import { SHADOW_SIZE as SHADOW_SIZE_PC, IS_TOUCH, TRACK_WIDTH } from '../config.js';
 import { modelMatrix, IDENTITY } from '../core/mat4.js';
 import { game } from '../game/state.js';
 import { track } from '../game/track.js';
@@ -8,7 +8,7 @@ import { cameraView, lightMatrix } from './camera.js';
 import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
 import { buildWorld, buildProps, buildLights } from './world.js';
-import { buildLambo, buildKart, buildItemBox, buildBanana, buildFlame, buildBlob, buildHeadlights } from './models.js';
+import { buildLambo, buildKart, buildItemBox, buildBanana, buildCoco, COCO_R, buildIce, buildFlame, buildBlob, buildHeadlights } from './models.js';
 
 const SHADOW_SIZE = IS_TOUCH ? 1024 : SHADOW_SIZE_PC; // sombras más ligeras en móvil
 
@@ -94,6 +94,7 @@ export function initRenderer() {
   loadWorld();
   meshes.box = upload(buildItemBox());
   meshes.banana = upload(buildBanana());
+  meshes.coco = upload(buildCoco());
   meshes.flames = [upload(buildFlame(18)), upload(buildFlame(24))];
   meshes.blob = upload(buildBlob());
   meshes.headlights = upload(buildHeadlights());
@@ -135,6 +136,20 @@ function drawCasters(prog, t) {
     if (b.t <= 0) drawMesh(prog, meshes.box, modelMatrix(b.x, b.y, t * 1.5, (b.h || 0) + 20 + Math.sin(t * 3) * 3));
   });
   game.bananas.forEach(b => drawMesh(prog, meshes.banana, modelMatrix(b.x, b.y, 0, b.h || 0)));
+  game.coconuts.forEach(k => drawMesh(prog, meshes.coco, modelMatrix(k.x, k.y, k.angle, (k.h || 0) + COCO_R, -k.roll)));
+}
+
+// Las placas de hielo se construyen al aparecer y se borran al derretirse
+const iceMeshes = new Map();
+function drawIces() {
+  const keep = new Set();
+  game.ices.forEach(ice => {
+    const key = ice.seg + ':' + ice.segs;
+    keep.add(key);
+    if (!iceMeshes.has(key)) iceMeshes.set(key, upload(buildIce(track.points, ice.seg, ice.segs, TRACK_WIDTH / 2)));
+    drawMesh(progMain, iceMeshes.get(key), IDENTITY);
+  });
+  iceMeshes.forEach((mesh, key) => { if (!keep.has(key)) { release(mesh); iceMeshes.delete(key); } });
 }
 
 // Luz y cielo del circuito actual
@@ -194,6 +209,7 @@ function mainPass(v, lightVP, t) {
   gl.bindTexture(gl.TEXTURE_2D, shadowMap.tex);
   gl.uniform1i(loc(progMain, 'uShadow'), 0);
   drawMesh(progMain, meshes.world, IDENTITY);
+  drawIces();
   drawCasters(progMain, t);
   game.cars.forEach(c => {
     if (c.boost > 0) drawMesh(progMain, meshes.flames[Math.random() < 0.5 ? 0 : 1], carModel(c));

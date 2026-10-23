@@ -19,7 +19,7 @@
 
 ## ✨ Características
 
-- 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo** y **plátanos**, marcador de posición, minimapa y clasificación final.
+- 🎮 **Estilo Mario Kart**: 3 vueltas, cajas sorpresa con **turbo**, **plátanos**, **cocos** que persiguen al de delante y **hielo** que te hace patinar, marcador de posición, minimapa y clasificación final.
 - 🗺️ **Cuatro circuitos con ambientación propia**, a elegir antes de cada carrera (o 🎲 *Aleatorio*; en multijugador elige el anfitrión):
   - *Valle Verde*: prados, pinos y una rampa.
   - *Pico Nevado*: nieve, curvas en S, pinos nevados y dos rampas.

@@ -1,4 +1,5 @@
-// Física arcade: aceleración, giro, saltos en rampas, trompos por plátano y choques entre coches.
+// Física arcade: aceleración, giro, saltos en rampas, trompos por plátano, patinazos en el hielo
+// y choques entre coches.
 import { CAR_RADIUS } from '../config.js';
 import { clamp } from '../core/math.js';
 import { game } from './state.js';
@@ -11,16 +12,19 @@ const GRAVITY = 0.12;        // unidades/fotograma² hacia abajo
 const AIR_TURN = 0.3;        // en el aire se gira mucho menos
 const LANDING_BOOST = 25;    // mini-turbo al aterrizar tras un buen salto
 const MIN_JUMP_FOR_BOOST = 15;
+export const SLIDE_TIME = 70; // fotogramas patinando sin control al pisar hielo
 const STICK = 6;             // si el suelo baja menos que esto, el coche lo sigue (cuestas, puentes)
 
 // inp = { up, down, turn }   dt = fotogramas transcurridos (1 = 60 fps)
 // Mueve el coche en el plano; la altura se ajusta después con updateHeight().
 export function physics(c, inp, dt) {
   if (c.spin > 0) spinOut(c, dt);
+  else if (c.slide > 0) slideOut(c, dt);
   else if (c.air > 0) c.angle += inp.turn * TURN * AIR_TURN * dt; // en el aire solo se gira un poco
   else drive(c, inp, dt);
-  c.x += Math.cos(c.angle) * c.speed * dt;
-  c.y += Math.sin(c.angle) * c.speed * dt;
+  const heading = c.slide > 0 ? c.slideDir : c.angle; // patinando, sigue hacia donde iba
+  c.x += Math.cos(heading) * c.speed * dt;
+  c.y += Math.sin(heading) * c.speed * dt;
 }
 
 function drive(c, inp, dt) {
@@ -68,6 +72,15 @@ function spinOut(c, dt) {
   c.spin -= dt;
   c.angle += 0.25 * dt;
   c.speed *= Math.pow(0.94, dt);
+}
+
+// Patinazo en el hielo: no se puede girar ni acelerar; el coche colea de un lado a otro
+// cada vez menos y sigue en la dirección que llevaba
+function slideOut(c, dt) {
+  c.slide = Math.max(0, c.slide - dt);
+  const left = c.slide / SLIDE_TIME;
+  c.angle = c.slideDir + Math.sin((1 - left) * Math.PI * 5) * 0.7 * left;
+  c.speed *= Math.pow(0.992, dt);
 }
 
 // Separa coches que se solapan. Cada ordenador solo empuja los coches que simula.

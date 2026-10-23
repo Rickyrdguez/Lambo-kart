@@ -7,15 +7,15 @@
 //
 // Reparto del trabajo:
 //  - Cada jugador simula SU coche (sin retraso al conducir) y lo envía ~20 veces/s.
-//  - El anfitrión simula la IA, las cajas, los plátanos y la llegada, y envía el mundo ~15 veces/s.
+//  - El anfitrión simula la IA, las cajas, los plátanos, los cocos, el hielo y la llegada, y envía el mundo ~15 veces/s.
 //
 // Mensajes del servidor: welcome, lobby, taken, noroom, full, closed.
-// Mensajes entre jugadores: hello, map, start, tolobby, car, world, item, spin, banana.
+// Mensajes entre jugadores: hello, map, start, tolobby, car, world, item, spin, banana, coco, hielo.
 import { RELAY_URL, CAR_SEND_MS, WORLD_SEND_MS, DEFAULT_ROOM, MIN_PLAYERS, MAX_PLAYERS } from '../config.js';
 import { angDiff } from '../core/math.js';
 import { game, setState } from '../game/state.js';
 import { me, owned, carById } from '../game/cars.js';
-import { hitBanana } from '../game/items.js';
+import { hitBanana, throwCoco, dropIce } from '../game/items.js';
 import { startRace, showMenuScene, returnToLobby, session } from '../game/session.js';
 import { showLobby, renderLobby, showScreen, setStatus, playerName } from '../ui/menu.js';
 
@@ -120,7 +120,9 @@ const handlers = {
   world: m => { if (net.inRace && !isHost()) applyWorld(m); },
   item: m => { if (m.id === net.myId) me().item = m.item; },
   spin: m => { if (m.id === net.myId) hitBanana(me()); },
-  banana: m => { if (isHost()) game.bananas.push({ x: m.x, y: m.y, h: m.h || 0 }); }
+  banana: m => { if (isHost()) game.bananas.push({ x: m.x, y: m.y, h: m.h || 0 }); },
+  coco: m => { const c = carById(m.id); if (isHost() && c) throwCoco(c); },
+  hielo: m => { if (isHost()) dropIce(m.seg); }
 };
 
 // Si alguien se va en mitad de la carrera, su coche pasa a llevarlo la IA
@@ -134,7 +136,7 @@ function dropMissingPlayers() {
 function carState(c) {
   return {
     id: c.id, x: +c.x.toFixed(1), y: +c.y.toFixed(1), angle: +c.angle.toFixed(3), speed: +c.speed.toFixed(2),
-    z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), ground: Math.round(c.ground), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)),
+    z: +c.z.toFixed(1), vz: +c.vz.toFixed(2), pitch: +c.pitch.toFixed(2), ground: Math.round(c.ground), lap: c.lap, seg: c.seg, boost: Math.max(0, Math.round(c.boost)), spin: Math.max(0, Math.round(c.spin)), slide: Math.max(0, Math.round(c.slide)),
     done: c.done, item: c.item
   };
 }
@@ -142,7 +144,7 @@ function carState(c) {
 function applyRemote(c, s) {
   if (!c || owned(c)) return;
   c.net = s;
-  ['lap', 'seg', 'boost', 'spin', 'done', 'item', 'ground'].forEach(k => { c[k] = s[k]; });
+  ['lap', 'seg', 'boost', 'spin', 'slide', 'done', 'item', 'ground'].forEach(k => { c[k] = s[k]; });
 }
 
 function worldMsg() {
@@ -151,6 +153,8 @@ function worldMsg() {
     ai: game.cars.filter(c => !c.human).map(carState),
     boxes: game.boxes.map(b => Math.max(0, Math.round(b.t))),
     bananas: game.bananas.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.h)]),
+    coconuts: game.coconuts.map(k => [Math.round(k.x), Math.round(k.y), Math.round(k.h), +k.angle.toFixed(2)]),
+    ices: game.ices.map(i => [i.seg, i.segs, Math.round(i.t)]),
     finish: game.finishOrder.map(c => c.id)
   };
 }
@@ -161,6 +165,8 @@ function applyWorld(m) {
   m.ai.forEach(s => applyRemote(carById(s.id), s));
   game.boxes.forEach((b, i) => { b.t = m.boxes[i]; });
   game.bananas = m.bananas.map(([x, y, h]) => ({ x, y, h: h || 0 }));
+  game.coconuts = (m.coconuts || []).map(([x, y, h, angle]) => ({ x, y, h, angle, roll: performance.now() / 50 }));
+  game.ices = (m.ices || []).map(([seg, segs, t]) => ({ seg, segs, t }));
   game.finishOrder = m.finish.map(carById).filter(Boolean);
 }
 

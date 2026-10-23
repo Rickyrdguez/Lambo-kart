@@ -1,4 +1,4 @@
-// Modelos 3D construidos por código: Lamborghini, kart, caja de objeto, plátano y efectos.
+// Modelos 3D construidos por código: Lamborghini, kart, caja de objeto, plátano, coco y efectos.
 // Coordenadas locales: x hacia delante, y hacia arriba, z hacia la derecha.
 import { UP } from '../core/math.js';
 import { M, loft, box, bothSides, sideZ, cylinderZ, quadN } from './geometry.js';
@@ -97,6 +97,46 @@ export function buildBanana() {
     const a = -0.9 + i * 0.36, x = Math.sin(a) * 10, z = Math.cos(a) * 10 - 10;
     const tip = i === 0 || i === 5;
     box(g, x - 2.2, x + 2.2, 0.5, tip ? 3 : 4.5, z - 2.2, z + 2.2, tip ? '#5d4037' : '#ffd21f', M.PAINT);
+  }
+  return g;
+}
+
+// Coco: una bola marrón de pocas caras (centrada en el origen para que pueda rodar)
+export const COCO_R = 9;
+export function buildCoco() {
+  const g = [], rings = 7, sides = 9;
+  const secs = [];
+  for (let i = 0; i <= rings; i++) {
+    const a = Math.PI * i / rings, r = Math.max(0.01, Math.sin(a) * COCO_R);
+    secs.push({ x: -Math.cos(a) * COCO_R, pts: Array.from({ length: sides }, (_, j) => {
+      const b = Math.PI * 2 * j / sides;
+      return [Math.cos(b) * r, Math.sin(b) * r];
+    }) });
+  }
+  loft(g, secs, (k, j) => [(k + j) % 3 ? '#6b4423' : '#4a2c14', M.MATTE]);
+  box(g, COCO_R - 1.5, COCO_R + 0.5, -1.2, 1.2, -1.2, 1.2, '#2a170a', M.MATTE); // "ojos" del coco
+  return g;
+}
+
+// Placa de hielo sobre la pista, de seg a seg + segs, de borde a borde (coordenadas del mundo)
+export function buildIce(points, seg, segs, halfWidth) {
+  const g = [], N = points.length;
+  // f: 0..segs a lo largo, s: -1..1 de lado a lado
+  const at = (f, s, y) => {
+    const i = Math.min(Math.floor(f), segs - 1), t = f - i;
+    const p = points[(seg + i) % N], q = points[(seg + i + 1) % N];
+    const x = p.x + (q.x - p.x) * t, z = p.y + (q.y - p.y) * t, a = p.a + Math.atan2(Math.sin(q.a - p.a), Math.cos(q.a - p.a)) * t;
+    return [x - Math.sin(a) * halfWidth * s, (p.h || 0) + (q.h - p.h || 0) * t + y, z + Math.cos(a) * halfWidth * s];
+  };
+  const quad = (f0, f1, s0, s1, y, col) =>
+    quadN(g, [at(f0, s0, y), at(f0, s1, y), at(f1, s1, y), at(f1, s0, y)], [UP, UP, UP, UP], col, M.GLASS);
+  for (let i = 0; i < segs; i++) quad(i, i + 1, -1, 1, 1.2, [0.42, 0.72, 0.95]); // capa azul
+  // trozos más claros repartidos encima, como placas de hielo agrietado
+  let r = seg * 9301 + 49297;
+  const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+  for (let k = 0; k < 14; k++) {
+    const f = rnd() * (segs - 0.6), s = rnd() * 1.7 - 0.95, w = 0.15 + rnd() * 0.2;
+    quad(f, f + 0.3 + rnd() * 0.4, s, s + w, 1.6, rnd() < 0.5 ? [0.85, 0.95, 1] : [0.66, 0.86, 1]);
   }
   return g;
 }

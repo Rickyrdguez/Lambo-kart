@@ -104,6 +104,20 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 - **Dibujo**: la matriz de cada coche incluye la altura y la inclinación del morro (`pitch`). La sombra de contacto se queda en el suelo, y la sombra real la calcula el *shadow mapping*.
 - **Reglas**: en el aire no se pisan plátanos, y dos coches a distinta altura no chocan.
 
+## Objetos de las cajas
+
+Están en [`game/items.js`](../src/game/items.js). Cada caja da uno al azar:
+
+- **Turbo**: más velocidad durante un rato.
+- **Plátano**: se deja detrás; quien lo pisa hace un trompo.
+- **Coco**: sale hacia delante y persigue al coche que va justo delante en la clasificación.
+  - Si el objetivo está lejos, sigue la pista apuntando unos segmentos por delante; cuando está cerca, va directo a por él.
+  - Le da al primer coche que toque (menos a quien lo lanzó) y le hace el mismo trompo que el plátano.
+  - Si nadie lo para, desaparece a los 5 segundos.
+- **Hielo**: una franja corta que ocupa todo el ancho de la carretera, detrás del coche. Dura 3 segundos.
+  - Quien lo pisa patina durante ~1,2 s: no puede girar ni acelerar y sigue en la dirección que llevaba (`slideDir`), mientras el coche colea cada vez menos.
+  - Cada ordenador comprueba el hielo con sus propios coches, como las placas de turbo, para que no haya retraso.
+
 ## Física e IA
 
 - **Física arcade** ([`game/physics.js`](../src/game/physics.js)): aceleración, rozamiento y velocidad máxima, que baja fuera de la pista. El giro depende de la velocidad. Los choques entre coches se resuelven separando los círculos que se solapan.
@@ -165,7 +179,7 @@ El servidor **no conoce las reglas del juego**: asigna huecos (0 = anfitrión, 1
 | Lo simula | Qué | Se envía |
 |---|---|---|
 | Cada jugador | Su propio coche | `car` ~20 veces/s |
-| Anfitrión | IA, cajas, plátanos y orden de llegada | `world` ~15 veces/s |
+| Anfitrión | IA, cajas, plátanos, cocos, hielo y orden de llegada | `world` ~15 veces/s |
 
 Como cada jugador simula su coche en su propio ordenador, conducir **no tiene retraso**. Los coches de los demás se dibujan con:
 
@@ -186,9 +200,9 @@ Como cada jugador simula su coche en su propio ordenador, conducir **no tiene re
 | `start` | anfitrión → todos | Empieza la carrera, con el circuito ya sorteado |
 | `tolobby` | anfitrión → todos | Volver a la sala de espera sin desconectarse (para cambiar de circuito) |
 | `car` | cada jugador → todos | Posición, altura (y la del suelo), velocidad, vuelta y objeto de su coche |
-| `world` | anfitrión → todos | Estado, IA, cajas, plátanos y llegada |
-| `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / has pisado un plátano |
-| `banana` | invitado → anfitrión | He tirado un plátano |
+| `world` | anfitrión → todos | Estado, IA, cajas, plátanos, cocos, hielo y llegada |
+| `item` / `spin` | anfitrión → un jugador | Has cogido un objeto / te ha dado un plátano o un coco |
+| `banana` / `coco` / `hielo` | invitado → anfitrión | He tirado un plátano, un coco o un hielo |
 
 Si un jugador se desconecta a mitad de carrera, la IA pasa a conducir su coche.
 

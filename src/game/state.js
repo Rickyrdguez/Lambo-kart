@@ -7,6 +7,8 @@ export const game = {
   cars: [],
   boxes: [],
   bananas: [],
+  coconuts: [],   // cocos lanzados (los mueve el anfitrión)
+  ices: [],       // placas de hielo en la pista
   finishOrder: [] // coches en el orden en que han llegado a meta
 };
 

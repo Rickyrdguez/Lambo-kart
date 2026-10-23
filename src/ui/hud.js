@@ -83,11 +83,34 @@ function drawBanana(x, y, s) {
   ctx.restore();
 }
 
+function drawCoco(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#6b4423';
+  ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2a170a';
+  [[-4, -4], [4, -4], [0, 3]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.arc(dx, dy, 2.2, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+
+function drawIce(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#bfefff'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(13, -6); ctx.lineTo(13, 8); ctx.lineTo(0, 15); ctx.lineTo(-13, 8); ctx.lineTo(-13, -6);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(-2, -9); ctx.lineTo(-2, 2); ctx.lineTo(-8, 5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
 function drawItemSlot(p) {
   const x = hudCanvas.width / 2 - 35, y = 10;
   panel(x, y, 70, 70);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x, y, 70, 70);
   if (p.item === 'banana') drawBanana(x + 35, y + 38, 1.6);
+  if (p.item === 'coco') drawCoco(x + 35, y + 35, 1.6);
+  if (p.item === 'hielo') drawIce(x + 35, y + 35, 1.5);
   if (p.item === 'turbo') {
     ctx.save(); ctx.translate(x + 50, y + 35); drawFlame(); ctx.restore();
     ctx.fillStyle = '#ff5722'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';

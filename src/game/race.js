@@ -7,7 +7,7 @@ import { owned } from './cars.js';
 import { physics, updateHeight, collideCars } from './physics.js';
 import { aiInput, rubberBand } from './ai.js';
 import { playerInput } from './input.js';
-import { updateBoxes, updateBananas, useItem } from './items.js';
+import { updateBoxes, updateBananas, updateCoconuts, rollCoconuts, updateIces, checkIce, useItem } from './items.js';
 import { net, isHost, followNet } from '../net/network.js';
 
 const PAD_BOOST = 45;  // fotogramas de turbo al pisar una placa
@@ -23,9 +23,11 @@ export function updateRace(dt) {
   if (isHost()) rubberBand();
   game.cars.forEach(c => owned(c) ? updateCar(c, dt) : followNet(c, dt));
   collideCars();
-  if (!isHost()) return; // objetos y llegada los decide el anfitrión
+  if (!isHost()) return rollCoconuts(dt); // objetos y llegada los decide el anfitrión
   updateBoxes(dt);
   updateBananas();
+  updateCoconuts(dt);
+  updateIces(dt);
   updateFinish();
 }
 
@@ -54,6 +56,7 @@ function updateProgress(c) {
   c.offTrack = d > TRACK_WIDTH / 2;
   if (c.air === 0) {
     if (onBoostPad(c)) c.boost = Math.max(c.boost, PAD_BOOST);
+    checkIce(c);
     if (isWater(c.x, c.y, i, d)) { c.sink = SINK_TIME; c.boost = 0; }
   }
   if (c.lap >= LAPS && !c.done) {

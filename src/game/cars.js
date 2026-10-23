@@ -18,6 +18,7 @@ export function makeCar(id, spot, name, color, human) {
     sink: 0, onShortcut: false, shortcutSpeed: 1, // hundiéndose en el agua, yendo por un atajo
     seg, lap: 0, done: false, offTrack: false,
     item: null, boost: 0, spin: 0,
+    slide: 0, slideDir: 0,                      // patinando por el hielo y hacia dónde iba
     base, maxSpeed: base,
     lane: human ? 0 : Math.random() * 80 - 40,  // carril que sigue la IA
     look: 10 + Math.floor(Math.random() * 4),   // cuántos segmentos mira por delante la IA
@@ -36,6 +37,8 @@ export function resetRace(humans) {
     return h ? makeCar(id, spot, h.name, PLAYER_COLORS[id], true) : makeCar(id, spot, KARTS[id][0], KARTS[id][1], false);
   });
   game.bananas = [];
+  game.coconuts = [];
+  game.ices = [];
   game.finishOrder = [];
   makeBoxes();
 }
