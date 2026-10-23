@@ -7,8 +7,7 @@ const BLOCKED = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']; //
 const STEER_IN = 0.08;   // cuánto gira el volante por fotograma al mantener la tecla (~0,2 s hasta el tope)
 const STEER_OUT = 0.25;  // cuánto vuelve al centro por fotograma al soltar
 
-// sensitivity: multiplica el giro del jugador (lo elige él en el menú; 1 = como la IA)
-export const settings = { sensitivity: 0.85 };
+const SENSITIVITY = 0.85; // el jugador gira un poco menos que la IA (1)
 let steer = 0;
 
 // El volante no salta de golpe: un toque corto hace una corrección pequeña y
@@ -21,7 +20,7 @@ export function playerInput(dt = 1) {
   return {
     up: keys.ArrowUp || keys.KeyW,
     down: keys.ArrowDown || keys.KeyS,
-    turn: steer * settings.sensitivity
+    turn: steer * SENSITIVITY
   };
 }
 

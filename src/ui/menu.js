@@ -5,7 +5,6 @@ import { splinePoints, computeBounds } from '../game/track.js';
 import { hostStart, session } from '../game/session.js';
 import { net, isHost, createGame, joinGame, leaveGame, shareMapChoice, setRoomSize } from '../net/network.js';
 import { goFullscreen } from './touch.js';
-import { settings } from '../game/input.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['scr-main', 'scr-maps', 'scr-join', 'scr-lobby'];
@@ -152,25 +151,9 @@ function saveName() {
   try { localStorage.setItem('lamboName', playerName()); } catch {}
 }
 
-// Deslizador de sensibilidad del giro (se guarda en el navegador; la clave cambió al pasar
-// el valor por defecto a 85, para que todos empiecen con el nuevo)
-function initSensitivity() {
-  let saved = null;
-  try { saved = localStorage.getItem('lamboSens85'); } catch {}
-  if (saved) $('sens').value = saved;
-  const apply = () => {
-    settings.sensitivity = $('sens').value / 100;
-    $('sens-value').textContent = $('sens').value + '%';
-    try { localStorage.setItem('lamboSens85', $('sens').value); } catch {}
-  };
-  $('sens').addEventListener('input', apply);
-  apply();
-}
-
 export function initMenu() {
   try { $('name').value = localStorage.getItem('lamboName') || ''; } catch {}
   $('name').addEventListener('change', saveName);
-  initSensitivity();
   $('btn-solo').onclick = () => { saveName(); goFullscreen(); setStatus(''); showMapPicker(); };
   $('btn-create').onclick = () => { saveName(); goFullscreen(); createGame(); };
   $('btn-join').onclick = () => { setStatus(''); showScreen('scr-join'); $('code').focus(); };

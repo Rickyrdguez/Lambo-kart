@@ -18,9 +18,6 @@ label { font-size: 13px; color: #bbb; display: flex; flex-direction: column; gap
 input { font: 600 18px 'Inter', sans-serif; padding: 12px 14px; border-radius: 10px; border: 1px solid #444;
         background: #0e0f13; color: #fff; outline: none; }
 input:focus { border-color: #ffb400; }
-.sens { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-.sens span { color: #ffb400; font-weight: 600; }
-.sens input { flex-basis: 100%; padding: 0; accent-color: #ffb400; height: 24px; }
 #code { text-transform: uppercase; letter-spacing: 6px; text-align: center; font-size: 26px; }
 button { font: 800 17px 'Inter', sans-serif; padding: 14px; border-radius: 10px; border: 0; cursor: pointer;
          background: #2b2e38; color: #fff; transition: transform .08s, background .15s; }
