@@ -32,7 +32,7 @@ export function updateRace(dt) {
 function updateCar(c, dt) {
   if (c.sink > 0) return updateSink(c, dt);
   const mine = c.id === net.myId && c.human;
-  const inp = mine && !c.done ? playerInput() : aiInput(c); // al terminar, piloto automático
+  const inp = mine && !c.done ? playerInput(dt) : aiInput(c); // al terminar, piloto automático
   physics(c, inp, dt);    // moverse
   updateProgress(c);      // en qué parte de la pista está
   keepOnRoad(c);          // muros de los tramos elevados

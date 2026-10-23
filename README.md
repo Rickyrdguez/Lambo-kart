@@ -77,6 +77,8 @@
 | `Esc` | Online: el anfitrión lleva a todos a la sala de espera (el grupo sigue junto); un invitado sale de la partida. Solo: elegir circuito |
 | `Enter` | Otra carrera con el mismo grupo (anfitrión, al terminar) |
 
+El volante es **progresivo** (un toque corto corrige poco; mantener pulsado gira del todo) y la **sensibilidad del giro** se ajusta en el menú principal.
+
 En el **móvil** (en horizontal): ◀ ▶ abajo a la izquierda para girar (se puede deslizar el pulgar de uno a otro), pedales abajo a la derecha (▲ acelerar, ▼ frenar) y el botón de objeto encima de ◀ ▶. En iPhone, para jugar a pantalla completa: **Compartir → Añadir a pantalla de inicio**.
 
 ## 👥 Jugar con amigos
