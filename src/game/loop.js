@@ -52,7 +52,7 @@ export function enterLoop(c) {
   if (along < 0 || along > 40 || side > 0) return false;
   c.loop = along / L.R;
   c.loopLane = Math.max(LANE_MIN, Math.min(LANE_MAX, side));
-  c.slide = 0;
+  Object.assign(c, { slide: 0, kx: 0, ky: 0, bump: 0, yaw: 0 });
   setPose(c, L);
   return true;
 }

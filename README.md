@@ -27,6 +27,7 @@
   - *Ciudad Neón*: de noche, trazado en 8 con un **puente** que cruza por encima de la propia pista, **túnel**, **callejón** con conos, rascacielos con ventanas encendidas, neones, farolas, faros, luna y estrellas.
   - *Carrera en el Cielo*: **pista flotante** sobre las nubes (si te sales donde no hay barreras, caes), trazado en 8 con **puente**, una **curva peraltada** como en Trackmania (se hace sí o sí por la pared, de lado), un **looping**, un **rasante** enorme que te hace volar por encima de una curva y un **salto** sobre un hueco.
 - 🛫 **Rampas con salto**: el coche vuela con física de gravedad, se inclina en el aire y gana un mini-turbo al aterrizar.
+- 💥 **Choques con física**: si embistes a otro coche lo empujas y, si el golpe es fuerte, pierde el control y gira.
 - 📱 **Se juega en el móvil**: botones táctiles en pantalla (girar, acelerar/frenar y usar objeto), pantalla completa en horizontal y gráficos adaptados. En el ordenador no aparecen.
 - 🌍 **Multijugador online de 2 a 7 jugadores**: se crea una sala con un código de 5 letras o un enlace de invitación, y el anfitrión elige cuántos caben, como en Among Us. Si sois menos de 4, karts con IA completan la parrilla. Funciona desde cualquier red, incluidas las de universidad y los datos móviles, gracias a un servidor de reenvío propio en **Cloudflare Workers**.
 - 🎨 **Motor gráfico propio con WebGL2**, sin Three.js ni otros motores:

@@ -43,7 +43,7 @@ function updateCar(c, dt) {
   keepOnRoad(c);          // muros de los tramos elevados
   keepInLoopLane(c);      // muros a la entrada y salida del looping
   updateHeight(c, dt);    // altura: puentes, rampas, saltos
-  if (c.z < FALL_LIMIT) respawn(c); // se ha caído de la pista en el cielo
+  if (c.z < FALL_LIMIT) respawn(c, c.takeoff ?? c.seg); // se ha caído de la pista en el cielo: desde donde despegó
   if (!c.human && c.item && Math.random() < 0.006 * dt) useItem(c);
 }
 
@@ -79,16 +79,20 @@ function updateSink(c, dt) {
   c.speed *= Math.pow(0.9, dt);
   c.x += Math.cos(c.angle) * c.speed * dt;
   c.y += Math.sin(c.angle) * c.speed * dt;
-  if (c.sink <= 0) respawn(c);
+  if (c.sink <= 0) respawn(c, c.seg);
 }
 
-// Si cayó en la cala o en un hueco reaparece al otro lado; si no, en el centro de la pista donde cayó
-function respawn(c) {
-  const range = waterRangeAt(c.seg) || gapAt(c.seg);
-  const seg = (range && range.type !== 'pier' ? range.to + 3 : c.seg) % track.N;
+// Si cayó en la cala o en un hueco reaparece ANTES de la placa de turbo y la rampa (para que
+// caerse no sirva de atajo: hay que volver a saltar); si no, en el centro de la pista donde cayó
+const BEFORE_JUMP = 15; // segmentos antes del hueco
+
+function respawn(c, from) {
+  // ¿cayó en la cala o en un hueco, o despegó de su rampa y no llegó?
+  const range = waterRangeAt(from) || gapAt(from) || track.gaps.find(r => from >= r.from - BEFORE_JUMP && from < r.from);
+  const seg = ((range && range.type !== 'pier' ? range.from - BEFORE_JUMP : from) + track.N) % track.N;
   const p = pointAt(seg, 0);
   const h = track.points[seg].h;
-  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: h, ground: h, vz: 0, air: 0, pitch: 0, sink: 0, spin: 0, slide: 0 });
+  Object.assign(c, { x: p.x, y: p.y, angle: track.points[seg].a, seg, speed: 0, z: h, ground: h, vz: 0, air: 0, pitch: 0, sink: 0, spin: 0, slide: 0, kx: 0, ky: 0, yaw: 0, bump: 0, takeoff: null });
 }
 
 function updateFinish() {

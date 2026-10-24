@@ -39,7 +39,7 @@ Los circuitos con `island` en su definición no tienen un suelo infinito: tienen
 
 - **Tierra y agua** ([`game/track.js`](../src/game/track.js)): al cargar el mapa, las franjas de tierra se rasterizan en una rejilla de celdas de 25 unidades (`buildLandMask`), así se puede preguntar al instante si un punto es tierra. Los tramos de `island.water` no tienen franja de tierra:
   - **Muelle (`pier`)**: la pista son tablones sobre el agua, sin bordillos.
-  - **Cala (`cove`)**: no hay suelo; hay que saltarla con la rampa anterior.
+  - **Cala (`cove`)**: no hay suelo; hay que saltarla con la rampa anterior. Si caes, reapareces antes de la placa de turbo y la rampa, para volver a intentarlo.
 - **Caer al agua** (`isWater` y [`game/race.js`](../src/game/race.js)):
   - Sobre la pista (asfalto o tablones) solo se puede caer en la cala. Fuera de la pista se consulta la rejilla.
   - Al caer, el coche se hunde poco a poco y reaparece: en la cala, al otro lado; en el resto, en el centro de la pista donde cayó.
@@ -104,7 +104,7 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 
 ### El salto
 
-Una placa de turbo y una rampa antes de un **hueco sin pista** (`sky.gaps`). Con el turbo se llega de sobra; si no, caes y reapareces al otro lado.
+Una placa de turbo y una rampa antes de un **hueco sin pista** (`sky.gaps`). Con el turbo se llega de sobra; si no, caes y reapareces **antes** de la placa y la rampa (caerse no puede servir de atajo). Para saberlo, cada coche guarda el segmento desde el que despegó (`takeoff`).
 
 ### Un looping en un juego 2D con alturas
 
@@ -163,7 +163,11 @@ Están en [`game/items.js`](../src/game/items.js). Cada caja da uno al azar:
 
 ## Física e IA
 
-- **Física arcade** ([`game/physics.js`](../src/game/physics.js)): aceleración, rozamiento y velocidad máxima, que baja fuera de la pista. El giro depende de la velocidad. Los choques entre coches se resuelven separando los círculos que se solapan.
+- **Física arcade** ([`game/physics.js`](../src/game/physics.js)): aceleración, rozamiento y velocidad máxima, que baja fuera de la pista. El giro depende de la velocidad.
+- **Choques entre coches**: se separan los círculos que se solapan y se reparte el empuje como entre dos bolas de billar, contando como más pesado a quien embiste.
+  - Quien embiste pierde algo de velocidad y el golpeado sale **empujado** en la dirección del golpe (`kx`, `ky`: un empujón lateral que se va frenando).
+  - Si el golpe es fuerte, el golpeado **pierde el control** un momento (`bump`): gira sobre sí mismo (más cuanto más de lado le den) y el volante apenas responde.
+  - En red no se envía nada más: cada ordenador hace la misma cuenta con las velocidades de los dos coches y solo cambia los que simula.
 - **IA** ([`game/ai.js`](../src/game/ai.js)): cada kart apunta a un punto de la pista unos segmentos por delante, en su propio carril, y frena si el ángulo de giro es muy grande. Con el *rubber banding*, la IA acelera un poco si va detrás del jugador que va primero y frena si va delante.
 
 ## Render (WebGL2)
