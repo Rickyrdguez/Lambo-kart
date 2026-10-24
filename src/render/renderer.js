@@ -3,7 +3,7 @@
 import { SHADOW_SIZE as SHADOW_SIZE_PC, IS_TOUCH, TRACK_WIDTH } from '../config.js';
 import { modelMatrix, IDENTITY } from '../core/mat4.js';
 import { game } from '../game/state.js';
-import { track } from '../game/track.js';
+import { track, bankRoll, sideOf } from '../game/track.js';
 import { cameraView, lightMatrix } from './camera.js';
 import { FLOATS_PER_VERTEX } from './geometry.js';
 import { MAIN_VS, MAIN_FS, SHADOW_VS, SHADOW_FS, SKY_VS, SKY_FS } from './shaders.js';
@@ -126,7 +126,8 @@ function drawMesh(prog, mesh, model) {
   gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
 }
 
-const carModel = c => modelMatrix(c.x, c.y, c.angle, c.z, c.pitch);
+// en la curva peraltada el coche se inclina según por dónde va de la pared
+const carModel = c => modelMatrix(c.x, c.y, c.angle, c.z, c.pitch, c.loop >= 0 ? 0 : bankRoll(c.seg, sideOf(c.seg, c.x, c.y)));
 // sombra de contacto y faros: en el suelo bajo el coche (también si va por un puente)
 const groundModel = c => modelMatrix(c.x, c.y, c.angle, c.ground || 0);
 

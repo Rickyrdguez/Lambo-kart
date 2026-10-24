@@ -1,7 +1,7 @@
 // Reglas de la carrera: actualización de cada fotograma, vueltas, posiciones, llegada,
 // placas de turbo, atajos, looping, caídas al agua y caídas al vacío (pista en el cielo).
 import { LAPS, TRACK_WIDTH } from '../config.js';
-import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad, gapAt, FALL_LIMIT } from './track.js';
+import { track, nearestSeg, pointAt, shortcutAt, onBoostPad, isWater, waterRangeAt, keepOnRoad, gapAt, FALL_LIMIT, bankAt, sideOf } from './track.js';
 import { game, setState } from './state.js';
 import { owned } from './cars.js';
 import { physics, updateHeight, collideCars } from './physics.js';
@@ -58,7 +58,8 @@ function updateProgress(c) {
   else if (!lost && i > c.seg + track.N / 2) c.lap--;
   c.seg = i;
   c.trackDist = d;
-  c.offTrack = d > TRACK_WIDTH / 2;
+  const bank = bankAt(i); // subir por la pared peraltada no frena
+  c.offTrack = d > TRACK_WIDTH / 2 && !(bank && sideOf(i, c.x, c.y) * bank.outer > 0);
   if (c.air === 0) {
     if (onBoostPad(c)) c.boost = Math.max(c.boost, PAD_BOOST);
     checkIce(c);

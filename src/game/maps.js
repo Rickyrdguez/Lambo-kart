@@ -126,7 +126,7 @@ export const MAPS = [
   {
     id: 'cielo',
     name: 'Carrera en el Cielo',
-    subtitle: 'Pista flotante, looping, rasante y salto',
+    subtitle: 'Pista flotante, looping, peralte y rasante',
     mobileQuality: 0.85,
     // Trazado en 8 por encima de las nubes. Las diagonales se cruzan en el centro:
     // la de los segmentos 160-200 por abajo y la de 480-520 por el puente.
@@ -137,12 +137,13 @@ export const MAPS = [
     loop: { seg: 162, radius: 105 },                // looping vertical (game/loop.js)
     boostPads: [140, 148, 183],                     // dos antes del looping y una antes del salto
     ramps: [186],                                   // salto sobre el hueco
-    crest: { from: 291, peak: 305, to: 326, height: 100 }, // rasante: se vuela por encima de la curva
+    crest: { from: 46, peak: 60, to: 81, height: 100 },   // rasante: se vuela por encima de la curva
+    bank: { from: 262, to: 418 },                   // curva peraltada como en Trackmania: se puede ir por la pared
     sky: {
       gaps: [{ from: 190, to: 197 }],               // hueco sin pista: hay que saltarlo
-      open: [{ from: 288, to: 345 }]                // sin barreras en el rasante: si fallas la curva, caes
+      open: [{ from: 43, to: 100 }]                 // sin barreras en el rasante: si fallas la curva, caes
     },
-    boxes: [0.06, 0.4, 0.62],
+    boxes: [0.025, 0.38, 0.7],
     theme: {
       preview: '#7ec3f2',
       sky: true,

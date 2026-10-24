@@ -5,7 +5,7 @@
 import { TRACK_WIDTH as W } from '../config.js';
 import { UP, rgb, norm3 } from '../core/math.js';
 import { modelMatrix } from '../core/mat4.js';
-import { track, pointAt, waterRangeAt, inTunnel, inTrench, inGap, walled, PARK_WIDTH } from '../game/track.js';
+import { track, pointAt, waterRangeAt, inTunnel, inTrench, inGap, walled, bankAt, bankHeight, bankEdge, BANK, PARK_WIDTH } from '../game/track.js';
 import { M, vtx, tri, quadN, normalOf, box, bothSides, sideZ, frustumY, appendTransformed } from './geometry.js';
 import { LOOP_LANE, loopPoint, loopSide, loopLimits } from '../game/loop.js';
 
@@ -585,11 +585,14 @@ function buildSkyTrack(g) {
   const { asphalt, curbs, lines } = theme(), edge = W / 2 + 16;
   for (let i = 0; i < track.N; i++) {
     if (inGap(i)) continue;
-    trackStrip(g, i, 0, 1, -edge, edge, 0.3, asphalt, M.ASPHALT);
-    [0, 0.5].forEach((f, k) => bothSides(s => trackStrip(g, i, f, f + 0.5, ...sideZ(W / 2, edge, s), 0.5, curbs[k], M.MATTE)));
-    bothSides(s => trackStrip(g, i, 0, 1, ...sideZ(W / 2 - 12, W / 2 - 7, s), 0.45, lines, M.EMIT)); // líneas que brillan
+    const b = bankAt(i), flat = s => !b || s !== b.outer; // por fuera de la curva peraltada va la pared
+    if (b) { trackStrip(g, i, 0, 1, -b.outer * edge, b.outer * BANK.start, 0.3, asphalt, M.ASPHALT); bankWall(g, i, b.outer); }
+    else trackStrip(g, i, 0, 1, -edge, edge, 0.3, asphalt, M.ASPHALT);
+    [0, 0.5].forEach((f, k) => bothSides(s => flat(s) && trackStrip(g, i, f, f + 0.5, ...sideZ(W / 2, edge, s), 0.5, curbs[k], M.MATTE)));
+    bothSides(s => flat(s) && trackStrip(g, i, 0, 1, ...sideZ(W / 2 - 12, W / 2 - 7, s), 0.45, lines, M.EMIT)); // líneas que brillan
     if (i % 2 === 0) trackStrip(g, i, 0, 0.6, -2.5, 2.5, 0.45, '#f2f2f2', M.MATTE);
     bothSides(s => {
+      if (!flat(s)) return;
       wallQuad(g, i, s * edge, -SLAB, 0.5, '#dfe6f0');                                         // canto de la losa
       trackStrip(g, i, 0, 1, ...sideZ(edge - 8, edge, s), -SLAB - 0.5, lines, M.EMIT);          // neón por debajo
       if (walled(i)) glassWall(g, i, s * (W / 2 + 12));
@@ -600,6 +603,32 @@ function buildSkyTrack(g) {
     if (inGap(i - 1)) slabEnd(g, i, -1);
   }
   buildStartLine(g);
+}
+
+// Pared peraltada (cuarto de tubo) por fuera de la curva, con el borde de arriba a rayas,
+// la cara de fuera y la parte de abajo. Usa las mismas alturas que el coche (track.bankHeight).
+function bankWall(g, i, o) {
+  const J = 8, edge = W / 2 + 16, none = { k: 0, width: 0, outer: o };
+  const ends = [bankAt(i) || none, bankAt(i + 1) || none], p = track.points[i];
+  const out = [-Math.sin(p.a) * o, 0, Math.cos(p.a) * o], { curbs, asphalt, lines } = theme();
+  const P = (e, j) => {
+    const side = o * (BANK.start + (bankEdge(ends[e]) - BANK.start) * j / J);
+    return T(i, e, side, bankHeight(i + e, side) + 0.3);
+  };
+  const face = (pts, color, mat, ref) => {
+    let n = normalOf(pts);
+    if (n[0] * ref[0] + n[1] * ref[1] + n[2] * ref[2] < 0) n = n.map(v => -v);
+    quadN(g, pts, [n, n, n, n], rgb(color), mat);
+  };
+  const inward = [-out[0], 1, -out[2]];
+  for (let j = 0; j < J; j++) {
+    const top = j === J - 1;
+    face([P(0, j), P(1, j), P(1, j + 1), P(0, j + 1)], top ? curbs[i % 2] : asphalt, top ? M.MATTE : M.ASPHALT, inward);
+  }
+  const low = e => T(i, e, o * bankEdge(ends[e]), -SLAB);
+  face([P(0, J), P(1, J), low(1), low(0)], '#dfe6f0', M.MATTE, out);                            // cara de fuera
+  face([T(i, 0, o * edge, -SLAB), T(i, 1, o * edge, -SLAB), low(1), low(0)], '#9aa6b8', M.MATTE, [0, -1, 0]); // por debajo
+  face([low(0), low(1), T(i, 1, o * (bankEdge(ends[1]) - 8), -SLAB - 0.5), T(i, 0, o * (bankEdge(ends[0]) - 8), -SLAB - 0.5)], lines, M.EMIT, [0, -1, 0]);
 }
 
 // Barrera de cristal con el borde de arriba brillante

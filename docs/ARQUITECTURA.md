@@ -76,7 +76,7 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 - **Bordes brillantes**: las líneas de la pista son emisivas para que se vea bien por dónde va la carretera.
 - **Ambiente**: `uAmbient` baja la luz ambiente de noche.
 
-## Carrera en el Cielo: pista flotante, rasante, salto y looping
+## Carrera en el Cielo: pista flotante, peralte, rasante, salto y looping
 
 ### Pista flotante
 
@@ -84,6 +84,13 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 - **Barreras**: casi toda la pista tiene barreras de cristal (`keepOnRoad()` hace de muro), salvo los tramos `open` del mapa. En esos tramos, si te sales, caes.
 - **Dibujo** ([`render/world.js`](../src/render/world.js)): una losa con grosor, neón por debajo y barreras con el borde brillante. Debajo no hay nada: el cielo, nubes sueltas y globos aerostáticos.
 - El trazado es un 8 con un **puente**, como en *Ciudad Neón*.
+
+### La curva peraltada (como en Trackmania)
+
+- Por el lado de fuera de una curva larga, la pista sube como un **cuarto de tubo**: plana hasta cerca del borde y luego una pared que se curva hasta unos 70 grados ([`game/track.js`](../src/game/track.js)).
+- La lógica sigue en 2D: `bankHeight()` da la altura según lo lejos del centro que va el coche y `bankRoll()` su inclinación lateral. La pared ensancha la pista por fuera y subir por ella no frena.
+- El coche se dibuja inclinado con un giro de *roll* en su matriz ([`core/mat4.js`](../src/core/mat4.js)). Como sale de la posición, en red no hace falta enviar nada más.
+- La pared aparece y desaparece poco a poco al principio y al final de la curva. La IA va bien arriba en la pared.
 
 ### El rasante
 
