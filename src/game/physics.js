@@ -3,7 +3,7 @@
 import { CAR_RADIUS } from '../config.js';
 import { clamp } from '../core/math.js';
 import { game } from './state.js';
-import { groundAt } from './track.js';
+import { groundAt, onWall } from './track.js';
 import { owned } from './cars.js';
 
 const ACCEL = 0.18, BRAKE = 0.3, FRICTION = 0.985, TURN = 0.055;
@@ -44,12 +44,12 @@ function drive(c, inp, dt) {
 // El coche va pegado al suelo mientras este sube o baja poco a poco (rampas, puentes).
 // Si el suelo cae más deprisa de lo que caería el coche volando (final de una rampa, la cima
 // de un rasante, el borde de la pista en el cielo), sigue con la velocidad vertical que llevaba
-// y la gravedad lo hace caer. Llamar después de saber en qué segmento está.
+// y la gravedad lo hace caer. Por la pared peraltada, en cambio, siempre va pegado. Llamar después de saber en qué segmento está.
 export function updateHeight(c, dt) {
   const ground = groundAt(c);
   c.ground = ground;
   const fly = c.z + c.vz * dt - GRAVITY * dt * dt; // dónde estaría si fuera volando
-  if (c.air === 0 && ground >= fly - LAUNCH) {
+  if (c.air === 0 && (ground >= fly - LAUNCH || onWall(c))) { // por la pared peraltada va pegado
     c.vz = (ground - c.z) / Math.max(dt, 0.01); // subir o bajar con la carretera
     c.z = ground;
   } else {

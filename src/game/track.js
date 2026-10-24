@@ -152,8 +152,11 @@ export const walled = i => track.sky && !inGap(i) && !inRanges(track.open, i);
 // Solo hay suelo encima de la losa: fuera de ella, en un hueco o por debajo de ella, se cae
 function skyGround(c) {
   const side = sideOf(c.seg, c.x, c.y), b = bankAt(c.seg);
-  const edge = b && side * b.outer > 0 ? bankEdge(b) + 6 : SKY_EDGE; // la pared ensancha la pista
-  if (Math.abs(side) > edge || inGap(c.seg)) return VOID;
+  if (inGap(c.seg)) return VOID;
+  if (b) { // en la curva peraltada solo hay pista entre la barrera de dentro y lo alto de la pared
+    const s = side * b.outer;
+    if (s < b.inner - 6 || s > bankEdge(b) + 6) return VOID;
+  } else if (Math.abs(side) > SKY_EDGE) return VOID;
   const road = roadHeight(c.seg, c.x, c.y) + bankHeight(c.seg, side);
   if (c.z < road - 15) return VOID;
   const ramp = rampUnder(c.x, c.y);
@@ -163,10 +166,13 @@ function skyGround(c) {
 // ================== Curva peraltada ==================
 // Por el lado de fuera de la curva, la pista sube como un cuarto de tubo (como en Trackmania):
 // plana hasta BANK_START y luego una pared que se curva hacia arriba hasta casi la vertical.
+// Es obligatorio ir por la pared: una barrera por dentro se va abriendo hacia fuera y, en el
+// centro de la curva, el suelo plano desaparece. En la pared el coche va pegado (no despega).
 // La lógica sigue en 2D: la altura y la inclinación del coche salen de su posición lateral.
 const BANK_START = TRACK_WIDTH / 2 - 30;  // donde empieza a subir la pared (desde el centro)
-const BANK_R = 115;                       // radio del cuarto de tubo
-const BANK_TOP = 0.94;                    // hasta dónde sube (0.94 del radio: unos 70 grados)
+const BANK_R = 200;                       // radio del cuarto de tubo
+const BANK_MIN = 0.45;                    // la barrera de dentro deja la pared a partir de aquí (~30 grados)
+const BANK_TOP = 0.97;                    // hasta dónde sube (0.97 del radio: unos 75 grados)
 const BANK_RAMP = 12;                     // segmentos en los que la pared aparece y desaparece
 
 // Lado de fuera de la curva: el contrario hacia donde gira la pista
@@ -187,7 +193,9 @@ export function bankAt(i) {
   const b = track.bank;
   if (!b || i < b.from || i > b.to) return null;
   const k = smooth(Math.min(1, (i - b.from) / BANK_RAMP, (b.to - i) / BANK_RAMP));
-  return { k, outer: b.outer, width: BANK_R * BANK_TOP * k };
+  // inner: barrera de dentro (lateral desde el centro, positivo hacia fuera de la curva)
+  const inner = -SKY_EDGE + (SKY_EDGE + BANK_START + BANK_R * BANK_MIN * k) * k;
+  return { k, outer: b.outer, width: BANK_R * BANK_TOP * k, inner };
 }
 
 // Altura de la pared a una distancia lateral (con signo) del centro
@@ -201,8 +209,8 @@ export function bankHeight(seg, side) {
 // Inclinación lateral (roll) del coche sobre la pared: 0 en lo plano, hasta ~70 grados arriba
 export function bankRoll(seg, side) {
   const b = bankAt(seg);
-  if (!b || side * b.outer <= BANK_START) return 0;
-  const u = Math.min(Math.abs(side) - BANK_START, b.width) / Math.max(b.k, 0.01);
+  if (!b || side * b.outer <= BANK_START || Math.abs(side) - BANK_START >= b.width) return 0; // encima de la pared: plano
+  const u = (Math.abs(side) - BANK_START) / Math.max(b.k, 0.01);
   return -b.outer * Math.asin(Math.min(u, BANK_R * BANK_TOP) / BANK_R); // misma forma a escala: mismo ángulo
 }
 
@@ -211,10 +219,16 @@ export function bankRoll(seg, side) {
 export const BANK = { start: BANK_START, R: BANK_R, top: BANK_TOP };
 export const bankEdge = b => BANK_START + Math.max(SKY_EDGE - BANK_START, b.width);
 
-// Carril para la IA en la curva peraltada: bien arriba en la pared (o null)
+// Carril para la IA en la curva peraltada: algo por encima del medio de la pared (o null)
 export function bankAiLane(seg) {
   const b = bankAt(seg);
-  return b && b.k > 0.5 ? b.outer * (BANK_START + b.width * 0.8) : null;
+  return b && b.k > 0.3 ? b.outer * (b.inner + (bankEdge(b) - b.inner) * 0.6) : null;
+}
+
+// ¿Va por la pared? Ahí el coche va pegado: no despega aunque la pared se curve
+export function onWall(c) {
+  const b = bankAt(c.seg);
+  return !!b && b.k > 0.2 && sideOf(c.seg, c.x, c.y) * b.outer > BANK_START;
 }
 
 // En los tramos elevados (puente) o hundidos (trinchera y túnel) hay muros: si el coche llega
@@ -224,9 +238,11 @@ export function keepOnRoad(c) {
   if (track.sky ? !walled(c.seg) : Math.abs(p.h) < 1) return; // en el cielo hay barreras casi en toda la pista
   if (c.z < p.h - 20) return;
   const nx = -Math.sin(p.a), ny = Math.cos(p.a), side = (c.x - p.x) * nx + (c.y - p.y) * ny;
-  const b = bankAt(c.seg), out = b && side * b.outer > 0 ? Math.max(WALL, bankEdge(b) - 18) : WALL; // la pared se puede subir
-  if (Math.abs(side) <= out) return;
-  const push = Math.sign(side) * out - side;
+  const b = bankAt(c.seg); // en la curva peraltada: entre la barrera de dentro y lo alto de la pared
+  const lo = b ? b.outer * Math.max(-WALL, b.inner + 18) : -WALL, hi = b ? b.outer * Math.max(WALL, bankEdge(b) - 18) : WALL;
+  const min = Math.min(lo, hi), max = Math.max(lo, hi);
+  if (side >= min && side <= max) return;
+  const push = (side < min ? min : max) - side;
   c.x += nx * push;
   c.y += ny * push;
   const along = Math.abs(angDiff(p.a, c.angle)) < Math.PI / 2 ? p.a : p.a + Math.PI;

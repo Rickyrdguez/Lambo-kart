@@ -135,10 +135,10 @@ export const MAPS = [
              [-675, -675], [-1275, -790]],
     bridge: { from: 460, up: 485, down: 515, to: 540, height: 110 },
     loop: { seg: 162, radius: 105 },                // looping vertical (game/loop.js)
-    boostPads: [140, 148, 183],                     // dos antes del looping y una antes del salto
+    boostPads: [140, 148, 183, 252],                // dos antes del looping, una antes del salto y otra antes del peralte
     ramps: [186],                                   // salto sobre el hueco
     crest: { from: 46, peak: 60, to: 81, height: 100 },   // rasante: se vuela por encima de la curva
-    bank: { from: 262, to: 418 },                   // curva peraltada como en Trackmania: se puede ir por la pared
+    bank: { from: 262, to: 418 },                   // curva peraltada como en Trackmania: obligatorio ir por la pared
     sky: {
       gaps: [{ from: 190, to: 197 }],               // hueco sin pista: hay que saltarlo
       open: [{ from: 43, to: 100 }]                 // sin barreras en el rasante: si fallas la curva, caes

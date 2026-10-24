@@ -1,6 +1,6 @@
 {
   "name": "lambo-kart",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Juego de carreras 3D en el navegador con WebGL2 y multijugador online (WebSocket + Cloudflare Workers).",
   "private": true,
   "scripts": {

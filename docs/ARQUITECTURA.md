@@ -90,7 +90,9 @@ El túnel usa el mismo sistema de alturas, pero hacia abajo (`map.tunnel`): la p
 - Por el lado de fuera de una curva larga, la pista sube como un **cuarto de tubo**: plana hasta cerca del borde y luego una pared que se curva hasta unos 70 grados ([`game/track.js`](../src/game/track.js)).
 - La lógica sigue en 2D: `bankHeight()` da la altura según lo lejos del centro que va el coche y `bankRoll()` su inclinación lateral. La pared ensancha la pista por fuera y subir por ella no frena.
 - El coche se dibuja inclinado con un giro de *roll* en su matriz ([`core/mat4.js`](../src/core/mat4.js)). Como sale de la posición, en red no hace falta enviar nada más.
-- La pared aparece y desaparece poco a poco al principio y al final de la curva. La IA va bien arriba en la pared.
+- La pared aparece y desaparece poco a poco al principio y al final de la curva.
+- **Es obligatorio ir por la pared**: una barrera de cristal por dentro se va abriendo hacia fuera y, en el centro de la curva, el suelo plano desaparece. Antes de entrar hay una placa de turbo.
+- En la pared el coche va **pegado** (`onWall()`): `updateHeight()` no le deja despegar aunque la pared se curve.
 
 ### El rasante
 
